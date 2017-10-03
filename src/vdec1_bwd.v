@@ -20,7 +20,7 @@ module vdec1_bwd (
     start,
     busy,
     done,
-    info_bits,
+    dec_bits,
     codeblk_size_p7,    // ???
     pt_rd,
     pt_addr,
@@ -35,14 +35,14 @@ input                       rst;
 input                       start;
 output                      busy;
 output                      done;
-output  [28:0]              info_bits;
+output  [28:0]              dec_bits;
 output  [ 5:0]              codeblk_size_m7;
 output                      pt_rd;
 output  [8:0]               pt_addr;            // ptram: 37*8*32b=296*32b
 input   [31:0]              pt_dout;
 reg                         busy;
 reg                         done;
-reg     [28:0]              info_bits;
+reg     [28:0]              dec_bits;
 reg                         pt_rd;
 reg     [8:0]               pt_addr;
 
@@ -51,6 +51,7 @@ reg                         pt_rd_d1;
 reg     [7:0]               pre_state;
 reg     [7:0]               cur_state;
 reg     [3:0]               train_cnt;
+reg                         done_tmp1;
 // pt_addr
 always @(posedge clk or posedge rst) begin
     if (rst) begin
@@ -157,29 +158,31 @@ end
 // output
 always @(posedge clk or posedge rst) begin
     if (rst) begin
-        info_bits <= 29'd0;
+        dec_bits <= 29'd0;
     end
     else begin
         if (start) begin
-            info_bits <= 29'd0;
+            dec_bits <= 29'd0;
         end
         else if (pt_rd_d1 == 1 && train_cnt == 4'd0) begin
-            info_bits <= {info_bits[27:0], pre_state[7]};
+            dec_bits <= {dec_bits[27:0], pre_state[7]};
         end
     end
 end
 // done
 always @(posedge clk or posedge rst) begin
     if (rst) begin
+        done_tmp1 <= 1'd0;
         done <= 1'd0;
     end
     else begin
         if (pt_rd == 1'd0 && pt_rd_d1 == 1) begin
-            done <= 1'd1;
+            done_tmp1 <= 1'd1;
         end
         else begin
-            done <= 1'd0;
+            done_tmp1 <= 1'd0;
         end
+        done <= done_tmp1;
     end
 end
 // busy
