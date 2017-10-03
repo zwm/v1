@@ -5,7 +5,8 @@
 //                                                                          //
 // Module Description   : Forward metric calc, features:                    //
 //                        Code rate         : only 1/3                      //
-//                        Codeblk_size      : max 37                        //
+//                        Codeblk_size      : 8, 29, 22                     //
+//                        Tail bits         : 8                             //
 //                                                                          //
 // Timing Constraints   : Module is designed to work with a clock frequency //
 //                        of 307.2 MHz                                      //
@@ -809,7 +810,7 @@ always @(posedge clk or posedge rst) begin
         pt_wr <= 1'd0;
     end
     else begin
-        if (cyc_d3[3:0] == 4'd15) begin
+        if (cyc_d3[2:0] == 3'd7) begin
             pt_wr <= 1'd1;
         end
         else begin
@@ -826,7 +827,7 @@ always @(posedge clk or posedge rst) begin
         if (start) begin
             pt_addr <= 9'd511;
         end
-        else if (cyc_d3[3:0] == 4'd15) begin
+        else if (cyc_d3[2:0] == 3'd7) begin
             pt_addr <= pt_addr + 1;
         end
     end
@@ -862,7 +863,7 @@ always @(posedge clk or posedge rst) begin
         pt_din <= 32'd0;
     end
     else begin
-        if (cyc_d3 == 4'd15) begin
+        if (cyc_d3[2:0] == 3'd7) begin
             pt_din <= {state_d_src, state_c_src, pt_cache[29:0]};
         end
     end
