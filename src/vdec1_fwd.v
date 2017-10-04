@@ -22,6 +22,7 @@ module vdec1_fwd (
     done,
     codeblk_size_p7,    // ???
     hs_mode,
+    ue_mask,
     base_sys,
     mp_sel_AB,
     mp_sel_CD,
@@ -53,7 +54,8 @@ input                       start;
 output                      busy;
 output                      done;
 input   [5:0]               codeblk_size_p7;    // part1: 8+7, part2: 29+7, agch: 22+7
-input   [1:0]               hs_mode;
+input   [1:0]               hs_mode;            // 00: part1, 01: part2, 10: agch
+input   [15:0]              ue_mask;
 input   [15:0]              base_sys;           // ??? actual size???
 input                       mp_sel_AB;
 input                       mp_sel_CD;
@@ -99,7 +101,7 @@ reg     [ 5:0]              c0;
 reg     [ 5:0]              c1;
 reg     [ 5:0]              c2;
 reg     [ 5:0]              stage;      // 0~44
-reg     [ 7:0]              code_index; // coded symbol index, 0~111
+reg     [ 6:0]              code_index; // coded symbol index, 0~111
 reg                         fwd_start;
 reg                         cyc_en;
 reg     [ 6:0]              cyc;
@@ -175,6 +177,10 @@ reg                         done_tmp1;
 reg                         done_tmp2;
 reg                         done_tmp3;
 reg                         done_tmp4;
+reg     [ 7:0]              cc_reg;
+reg                         cc_in;
+wire                        cc_g0;
+wire                        cc_g1;
 //---------------------------------------------------------------------------
 //                              SUMMARY
 // This module include two parts:
@@ -254,17 +260,64 @@ always @(posedge clk or posedge rst) begin
         end
     end
 end
+// HS-SCCH Part1 UE specific masking
+// cc_in
+always (*) begin
+    if (hs_mode == 2'b00) begin
+        case (code_index[6:1])
+            6'd0    : cc_in = ue_mask[0];
+            6'd1    : cc_in = ue_mask[1];
+            6'd2    : cc_in = ue_mask[2];
+            6'd3    : cc_in = ue_mask[3];
+            6'd4    : cc_in = ue_mask[4];
+            6'd5    : cc_in = ue_mask[5];
+            6'd6    : cc_in = ue_mask[6];
+            6'd7    : cc_in = ue_mask[7];
+            6'd8    : cc_in = ue_mask[8];
+            6'd9    : cc_in = ue_mask[9];
+            6'd10   : cc_in = ue_mask[10];
+            6'd11   : cc_in = ue_mask[11];
+            6'd12   : cc_in = ue_mask[12];
+            6'd13   : cc_in = ue_mask[13];
+            6'd14   : cc_in = ue_mask[14];
+            6'd15   : cc_in = ue_mask[15];
+            default : cc_in = 1'd0;
+        endcase
+    end
+    else begin
+        cc_in = 1'd0;
+    end
+end
+// cc_reg
+always @(posedge clk or posedge rst) begin
+    if (rst) begin
+        cc_reg <= 8'd0;
+    end
+    else begin
+        if (start) begin
+            cc_reg <= 8'd0;
+        end
+        else if (hs_mode == 2'b00)       // part1
+            if (pre_load == 1 && diram_cache_low == 0 && code_index[0] == 1) begin
+                cc_reg <= {cc_in, cc_reg[7:1]};
+            end
+        end
+    end
+end
+// UEID CC output
+assign cc_g0 = cc_reg[7] ^ cc_reg[3] ^ cc_reg[2] ^ cc_reg[1] ^ cc_in;
+assign cc_g1 = cc_reg[7] ^ cc_reg[6] ^ cc_reg[4] ^ cc_reg[2] ^ cc_reg[1] ^ cc_reg[0] ^ cc_in;
 // pre_load c0/1/2 next
 always @(posedge clk or posedge rst) begin
     if (rst) begin
-        code_index <= 8'd0;
+        code_index <= 7'd0;
         c0_next <= 6'd0;
         c1_next <= 6'd0;
         c2_next <= 6'd0;
     end
     else begin
         if (start) begin
-            code_index <= 8'd0;
+            code_index <= 7'd0;
             c0_next <= 6'd0;
             c1_next <= 6'd0;
             c2_next <= 6'd0;
@@ -278,7 +331,12 @@ always @(posedge clk or posedge rst) begin
                         c0_next <= 6'd0;
                     end
                     else begin
-                        c0_next <= diram_cache[41:36];
+                        if (code_index[0]) begin
+                            c0_next <= ({6{cc_g0}} ^ diram_cache[41:36]) + cc_reg0;
+                        end
+                        else begin
+                            c0_next <= ({6{cc_g1}} ^ diram_cache[41:36]) + cc_reg1;
+                        end
                     end
                 end
                 // c1
@@ -287,7 +345,12 @@ always @(posedge clk or posedge rst) begin
                         c1_next <= 6'd0;
                     end
                     else begin
-                        c1_next <= diram_cache[41:36];
+                        if (code_index[0]) begin
+                            c1_next <= ({6{cc_g0}} ^ diram_cache[41:36]) + cc_reg0;
+                        end
+                        else begin
+                            c1_next <= ({6{cc_g1}} ^ diram_cache[41:36]) + cc_reg1;
+                        end
                     end
                 end
                 // c2
@@ -296,7 +359,12 @@ always @(posedge clk or posedge rst) begin
                         c2_next <= 6'd0;
                     end
                     else begin
-                        c2_next <= diram_cache[41:36];
+                        if (code_index[0]) begin
+                            c2_next <= ({6{cc_g0}} ^ diram_cache[41:36]) + cc_reg0;
+                        end
+                        else begin
+                            c2_next <= ({6{cc_g1}} ^ diram_cache[41:36]) + cc_reg1;
+                        end
                     end
                 end
             end
