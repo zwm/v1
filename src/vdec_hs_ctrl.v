@@ -17,8 +17,9 @@ module vdec_hs_ctrl (
     start,
     busy,
     done,
-    agch_crc_sel,
+    hs_mode,
     crc_match,
+    agch_crc_sel,
     fwd_start,
     fwd_done,
     bwd_start,
@@ -38,8 +39,9 @@ input                       rst;
 input                       start;
 output                      busy;
 output                      done;
-output                      agch_crc_sel;
+input   [ 1:0]              hs_mode;
 input                       crc_match;
+output                      agch_crc_sel;
 output                      fwd_start;
 input                       fwd_done;
 output                      bwd_start;
