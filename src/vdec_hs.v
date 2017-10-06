@@ -97,7 +97,6 @@ output                      done_ns_hsscch_part1;
 output                      done_ns_hsscch_part2;
 output  [31:0]              status;
 input                       mpreq;
-input                       mpasel;
 input   [11:0]              mpa;
 input   [31:0]              mpd;
 output  [31:0]              mpq;
@@ -124,7 +123,7 @@ input                       agch_sel;
 output                      agch_crc1;
 output                      agch_crc2;
 input   [23:0]              diram_dout;
-output  [ 8:0]              diram_rd_addr;      // HSPA_CRAM 608x24b
+output  [ 9:0]              diram_rd_addr;      // HSPA_CRAM 608x24b
 input                       diram_rd_ack;
 output                      diram_rd_req;
 output                      vdec_crc;
@@ -174,7 +173,7 @@ wire                        fwd_busy;
 reg     [5:0]               codeblk_size_p7;
 wire    [15:0]              hs_uemask;
 wire    [15:0]              agch_uemask;
-reg     [ 8:0]              base_sys;
+reg     [ 9:0]              base_sys;
 wire                        fwd_sm0_rd;
 wire                        fwd_sm0_wr;
 wire    [ 5:0]              fwd_sm0_addr;
@@ -202,11 +201,11 @@ wire    [28:0]              ser_dec_bits;
 wire    [ 6:0]              ser_acc;
 wire                        fwd_diram_rd_req;
 wire                        fwd_diram_rd_ack;
-wire    [ 8:0]              fwd_diram_rd_addr;
+wire    [ 9:0]              fwd_diram_rd_addr;
 wire    [23:0]              fwd_diram_dout;
 wire                        ser_diram_rd_req;
 wire                        ser_diram_rd_ack;
-wire    [ 8:0]              ser_diram_rd_addr;
+wire    [ 9:0]              ser_diram_rd_addr;
 wire    [23:0]              ser_diram_dout;
 reg                         fwd_diram_rd_pend;
 reg                         ser_diram_rd_pend;
@@ -301,72 +300,72 @@ end
 // base_sys
 always @(posedge clk or posedge rst) begin
     if (rst) begin
-        base_sys <= 9'd0;
+        base_sys <= 10'd0;
     end
     else begin
         if (~vdec_hs_busy) begin
             if (start_part1) begin          // hsscch_part1
                 case (hsscch_sel)
-                    4'd0    : base_sys <= 9'h000;
-                    4'd1    : base_sys <= 9'h080;
-                    4'd2    : base_sys <= 9'h100;
-                    4'd3    : base_sys <= 9'h180;
-                    4'd4    : base_sys <= 9'h200;
-                    4'd5    : base_sys <= 9'h280;
-                    4'd6    : base_sys <= 9'h300;
-                    4'd7    : base_sys <= 9'h380;
-                    4'd8    : base_sys <= 9'h580;
-                    4'd9    : base_sys <= 9'h600;
-                    4'd10   : base_sys <= 9'h680;
-                    4'd11   : base_sys <= 9'h700;
-                    4'd12   : base_sys <= 9'h780;
-                    4'd13   : base_sys <= 9'h800;
-                    4'd14   : base_sys <= 9'h880;
-                    default : base_sys <= 9'h900;
+                    4'd0    : base_sys <= 10'h000;  // byte address : 0x000
+                    4'd1    : base_sys <= 10'h020;  // byte address : 0x080
+                    4'd2    : base_sys <= 10'h040;  // byte address : 0x100
+                    4'd3    : base_sys <= 10'h060;  // byte address : 0x180
+                    4'd4    : base_sys <= 10'h080;  // byte address : 0x200
+                    4'd5    : base_sys <= 10'h0A0;  // byte address : 0x280
+                    4'd6    : base_sys <= 10'h0C0;  // byte address : 0x300
+                    4'd7    : base_sys <= 10'h0E0;  // byte address : 0x380
+                    4'd8    : base_sys <= 10'h160;  // byte address : 0x580
+                    4'd9    : base_sys <= 10'h180;  // byte address : 0x600
+                    4'd10   : base_sys <= 10'h1A0;  // byte address : 0x680
+                    4'd11   : base_sys <= 10'h1C0;  // byte address : 0x700
+                    4'd12   : base_sys <= 10'h1E0;  // byte address : 0x780
+                    4'd13   : base_sys <= 10'h200;  // byte address : 0x800
+                    4'd14   : base_sys <= 10'h220;  // byte address : 0x880
+                    default : base_sys <= 10'h240;  // byte address : 0x900
                 endcase
             end
             else if (start_part2) begin     // hsscch_part2
                 case (hsscch_sel)
-                    4'd0    : base_sys <= 9'h00A;
-                    4'd1    : base_sys <= 9'h08A;
-                    4'd2    : base_sys <= 9'h10A;
-                    4'd3    : base_sys <= 9'h18A;
-                    4'd4    : base_sys <= 9'h20A;
-                    4'd5    : base_sys <= 9'h28A;
-                    4'd6    : base_sys <= 9'h30A;
-                    4'd7    : base_sys <= 9'h38A;
-                    4'd8    : base_sys <= 9'h58A;
-                    4'd9    : base_sys <= 9'h60A;
-                    4'd10   : base_sys <= 9'h68A;
-                    4'd11   : base_sys <= 9'h70A;
-                    4'd12   : base_sys <= 9'h78A;
-                    4'd13   : base_sys <= 9'h80A;
-                    4'd14   : base_sys <= 9'h88A;
-                    default : base_sys <= 9'h90A;
+                    4'd0    : base_sys <= 10'h00A;
+                    4'd1    : base_sys <= 10'h02A;
+                    4'd2    : base_sys <= 10'h04A;
+                    4'd3    : base_sys <= 10'h06A;
+                    4'd4    : base_sys <= 10'h08A;
+                    4'd5    : base_sys <= 10'h0AA;
+                    4'd6    : base_sys <= 10'h0CA;
+                    4'd7    : base_sys <= 10'h0EA;
+                    4'd8    : base_sys <= 10'h16A;
+                    4'd9    : base_sys <= 10'h18A;
+                    4'd10   : base_sys <= 10'h1AA;
+                    4'd11   : base_sys <= 10'h1CA;
+                    4'd12   : base_sys <= 10'h1EA;
+                    4'd13   : base_sys <= 10'h20A;
+                    4'd14   : base_sys <= 10'h22A;
+                    default : base_sys <= 10'h24A;
                 endcase
             end
             else if (start_ns_part1) begin  // ns_hsscch_part1
                 if (ns_hsscch_sel == 1'd0) begin
-                    base_sys <= 9'h480;
+                    base_sys <= 10'h120;            // byte address : 0x480
                 end
-                else 
-                    base_sys <= 9'h500;
+                else begin
+                    base_sys <= 10'h140;            // byte address : 0x500
                 end
             end
             else if (start_ns_part2) begin  // ns_hsscch_part2
                 if (ns_hsscch_sel == 1'd0) begin
-                    base_sys <= 9'h48A;
+                    base_sys <= 10'h12A;
                 end
-                else 
-                    base_sys <= 9'h50A;
+                else begin
+                    base_sys <= 10'h14A;
                 end
             end
             else if (start_agch) begin      // agch
                 if (agch_sel == 1'd0) begin
-                    base_sys <= 9'h400;
+                    base_sys <= 10'h100;            // byte address : 0x400
                 end
-                else 
-                    base_sys <= 9'h440;
+                else begin
+                    base_sys <= 10'h110;            // byte address : 0x440
                 end
             end
         end

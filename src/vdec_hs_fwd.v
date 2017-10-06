@@ -56,12 +56,12 @@ output                      done;
 input   [5:0]               codeblk_size_p7;    // part1: 8+7, part2: 29+7, agch: 22+7
 input   [1:0]               hs_mode;            // 00: part1, 01: part2, 10: agch
 input   [15:0]              ue_mask;
-input   [ 8:0]              base_sys;
+input   [ 9:0]              base_sys;
 input                       mp_sel_AB;
 input                       mp_sel_CD;
 output                      diram_rd_req;
 input                       diram_rd_ack;
-output  [ 8:0]              diram_raddr;        // 608x24b
+output  [ 9:0]              diram_raddr;        // 608x24b
 input   [23:0]              diram_rdata;
 output                      sm0_rd;
 output                      sm0_wr;
@@ -78,7 +78,7 @@ output  [8:0]               pt_addr;            // ptram: 37*8*32b=296*32b
 output  [31:0]              pt_din;
 reg                         busy;
 reg                         diram_rd_req;
-reg     [ 8:0]              diram_raddr;
+reg     [ 9:0]              diram_raddr;
 reg     [31:0]              sm0_din;
 reg     [31:0]              sm1_din;
 reg                         pt_wr;
@@ -181,6 +181,7 @@ reg     [ 7:0]              cc_reg;
 reg                         cc_in;
 wire                        cc_g0;
 wire                        cc_g1;
+wire                        punc;
 //---------------------------------------------------------------------------
 //                              SUMMARY
 // This module include two parts:
@@ -262,7 +263,7 @@ always @(posedge clk or posedge rst) begin
 end
 // HS-SCCH Part1 UE specific masking
 // cc_in
-always (*) begin
+always @(*) begin
     if (hs_mode == 2'b00) begin
         case (code_index[6:1])
             6'd0    : cc_in = ue_mask[0];
@@ -297,7 +298,7 @@ always @(posedge clk or posedge rst) begin
         if (start) begin
             cc_reg <= 8'd0;
         end
-        else if (hs_mode == 2'b00)       // part1
+        else if (hs_mode == 2'b00) begin    // part1
             if (pre_load == 1 && diram_cache_low == 0 && code_index[0] == 1) begin
                 cc_reg <= {cc_in, cc_reg[7:1]};
             end

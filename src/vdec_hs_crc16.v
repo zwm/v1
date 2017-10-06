@@ -41,6 +41,6 @@ assign crc_16b_next[13] =               crc_reg[12];
 assign crc_16b_next[14] =               crc_reg[13];
 assign crc_16b_next[15] =               crc_reg[14];
 // final output
-crc_next = crc_16b_next;
+assign crc_next         = crc_16b_next;
 
 endmodule

@@ -36,7 +36,7 @@ input                       start;
 output                      busy;
 output                      done;
 output  [28:0]              dec_bits;
-output  [ 5:0]              codeblk_size_p7;
+input   [ 5:0]              codeblk_size_p7;
 output                      pt_rd;
 output  [8:0]               pt_addr;            // ptram: 37*8*32b=296*32b
 input   [31:0]              pt_dout;

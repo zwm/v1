@@ -45,14 +45,14 @@ input   [28:0]              dec_bits;
 input   [5:0]               codeblk_size_p7;    // part1: 8+7, part2: 29+7, agch: 22+7
 input   [1:0]               hs_mode;            // 00: part1, 01: part2, 10: agch
 input   [15:0]              ue_mask;
-input   [ 8:0]              base_sys;
+input   [ 9:0]              base_sys;
 output  [ 6:0]              ser_acc;
 output                      diram_rd_req;
 input                       diram_rd_ack;
-output  [ 8:0]              diram_raddr;
+output  [ 9:0]              diram_raddr;
 input   [23:0]              diram_rdata;
 reg                         diram_rd_req;
-reg     [ 8:0]              diram_raddr;
+reg     [ 9:0]              diram_raddr;
 reg     [ 6:0]              ser_acc;
 
 // internal wires
@@ -84,7 +84,7 @@ reg                         cur_data;
 always @(posedge clk or posedge rst) begin
     if (rst) begin
         diram_rd_req <= 1'd0;
-        diram_raddr <= 9'd0;
+        diram_raddr <= 10'd0;
     end
     else begin
         if (start) begin
@@ -94,6 +94,9 @@ always @(posedge clk or posedge rst) begin
         else if (ser_en & diram_cache_low & (~diram_rd_pend)) begin
             diram_rd_req <= 1'd1;
             diram_raddr <= diram_raddr + 1;
+        end
+        else begin
+            diram_rd_req <= 1'd0;
         end
     end
 end
@@ -186,7 +189,7 @@ always @(posedge clk or posedge rst) begin
             cc13_index <= 2'd0;
         end
         else if (ser_en == 1 && (~diram_cache_low)) begin       // count range: 0~2
-            cc13_index[0] <= ~(cc13_index[1] | cc13_index[0])
+            cc13_index[0] <= ~(cc13_index[1] | cc13_index[0]);
             cc13_index[1] <= cc13_index[0];
         end
     end

@@ -97,7 +97,7 @@ always @(*) begin
                 if (hs_mode == 2'b00) begin     // part1
                     fsm_next = SER;
                 end
-                else 
+                else begin
                     fsm_next = CRC1;
                 end
             end
@@ -159,7 +159,7 @@ always @(posedge clk or posedge rst) begin
         if (fsm == IDLE && fsm_next == FWD) begin
             fwd_start <= 1'd1;
         end
-        else
+        else begin
             fwd_start <= 1'd0;
         end
     end
@@ -173,7 +173,7 @@ always @(posedge clk or posedge rst) begin
         if (fsm == FWD && fsm_next == BWD) begin
             bwd_start <= 1'd1;
         end
-        else
+        else begin
             bwd_start <= 1'd0;
         end
     end
@@ -187,7 +187,7 @@ always @(posedge clk or posedge rst) begin
         if ((fsm == BWD && fsm_next == CRC1) || (fsm == CRC1 && fsm_next == CRC2)) begin
             crc_start <= 1'd1;
         end
-        else
+        else begin
             crc_start <= 1'd0;
         end
     end
@@ -201,7 +201,7 @@ always @(posedge clk or posedge rst) begin
         if (fsm != SER && fsm_next == SER) begin
             ser_start <= 1'd1;
         end
-        else
+        else begin
             ser_start <= 1'd0;
         end
     end
