@@ -145,6 +145,9 @@ output                      pt_wen_out;
 output  [ 8:0]              pt_a_out;
 output  [31:0]              pt_d_out;
 input   [31:0]              pt_q_in;
+reg                         agch_crc1;
+reg                         agch_crc2;
+reg     [31:0]              mpq;
 //---------------------------------------------------------------------------
 // internal wires
 //---------------------------------------------------------------------------
@@ -260,7 +263,6 @@ wire    [3:0]               pt_ram_chan_sel;
 //---------------------------------------------------------------------------
 assign rst              = res;
 assign rst_n            = ~res;
-assign busy             = vdec_hs_busy;
 assign vdec_hs_start    = start_part1 | start_part2 | start_ns_part1 | start_ns_part2 | start_agch;
 assign hs_uemask        = ns_type ? ns_hsscch_uemask : hsscch_uemask;
 assign agch_uemask      = agch_crc_sel ? agch_uemask2 : agch_uemask1;
@@ -732,6 +734,62 @@ assign pt_a_out             = pt_rd_req[0] ? bwd_pt_rd_addr : (pt_wr_req[0] ? fw
 assign pt_d_out             = pt_wr_req[0] ? fwd_pt_din : mpd[31:0];
 assign bwd_pt_dout          = pt_q_in;
 assign pt_mpbusy            = mpreq | pt_rd_reqreg[1] | pt_rd_ack[1] | pt_wr_reqreg[1] | pt_wr_ack[1];
+// mpbusy
+assign mpbusy               = sm0_mpbusy | sm1_mpbusy | pt_mpbusy;
+// mpq
+always @(posedge clk or posedge rst) begin
+    if (rst) begin
+        mpq <= 32'd0;
+    end
+    else begin
+        if (sm0_rd_ack[1]) begin
+            mpq <= sm0_q_in;
+        end
+        else if (sm1_rd_ack[1]) begin
+            mpq <= sm1_q_in;
+        end
+        else if (pt_rd_ack[1]) begin
+            mpq <= pt_q_in;
+        end
+    end
+end
+//---------------------------------------------------------------------------
+// OUTPUT
+//---------------------------------------------------------------------------
+assign busy                 = vdec_hs_busy;
+assign done                 = vdec_hs_done;
+assign done_hsscch_part1    = (hs_mode == 2'd0) ? ((~ns_type) & vdec_hs_done) : 1'd0;
+assign done_hsscch_part2    = (hs_mode == 2'd1) ? ((~ns_type) & vdec_hs_done) : 1'd0;
+assign done_ns_hsscch_part1 = (hs_mode == 2'd0) ? (( ns_type) & vdec_hs_done) : 1'd0;
+assign done_ns_hsscch_part2 = (hs_mode == 2'd1) ? (( ns_type) & vdec_hs_done) : 1'd0;
+assign done_agch            = (hs_mode == 2'd2) ? vdec_hs_done : 1'd0;
+assign status               = {29'd0, fsm_out[2:0]}; // ??? more info???
+assign vdec_crc             = crc_match;
+assign vdec_ser_acc         = ser_acc;
+assign vdec_output          = {2'd0, bwd_dec_bits};
+// agch crc1 & crc2
+always @(posedge clk or posedge rst) begin
+    if (rst) begin
+        agch_crc1 <= 1'd0;
+        agch_crc2 <= 1'd0;
+    end
+    else begin
+        // crc1
+        if (start_agch) begin
+            agch_crc1 <= 1'd0;
+        end
+        else if (hs_mode == 2'd2 && crc_done == 1'd1 && agch_crc_sel == 1'd0) begin
+            agch_crc1 <= crc_match;
+        end
+        // crc2
+        if (start_agch) begin
+            agch_crc2 <= 1'd0;
+        end
+        else if (hs_mode == 2'd2 && crc_done == 1'd1 && agch_crc_sel == 1'd1) begin
+            agch_crc2 <= crc_match;
+        end
+    end
+end
 
 endmodule
 
