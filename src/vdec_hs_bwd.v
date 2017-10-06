@@ -21,7 +21,7 @@ module vdec_hs_bwd (
     busy,
     done,
     dec_bits,
-    codeblk_size_p7,    // ???
+    codeblk_size_p7,
     pt_rd,
     pt_addr,
     pt_dout
@@ -36,7 +36,7 @@ input                       start;
 output                      busy;
 output                      done;
 output  [28:0]              dec_bits;
-output  [ 5:0]              codeblk_size_m7;
+output  [ 5:0]              codeblk_size_p7;
 output                      pt_rd;
 output  [8:0]               pt_addr;            // ptram: 37*8*32b=296*32b
 input   [31:0]              pt_dout;
@@ -59,7 +59,7 @@ always @(posedge clk or posedge rst) begin
     end
     else begin
         if (start) begin
-            pt_addr <= {codeblk_size_m7[5:0], 3'd0};
+            pt_addr <= {codeblk_size_p7[5:0], 3'd0};
         end
         else if (pt_addr[8:3] != 0) begin
             pt_addr[8:3] <= pt_addr[8:3] - 1;

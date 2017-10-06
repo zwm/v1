@@ -22,7 +22,7 @@ module vdec_hs_ser (
     busy,
     done,
     dec_bits,
-    codeblk_size_p7,    // ???
+    codeblk_size_p7,
     hs_mode,
     ue_mask,
     base_sys,
@@ -45,7 +45,7 @@ input   [28:0]              dec_bits;
 input   [5:0]               codeblk_size_p7;    // part1: 8+7, part2: 29+7, agch: 22+7
 input   [1:0]               hs_mode;            // 00: part1, 01: part2, 10: agch
 input   [15:0]              ue_mask;
-input   [15:0]              base_sys;           // ??? actual size???
+input   [ 8:0]              base_sys;
 output  [ 6:0]              ser_acc;
 output                      diram_rd_req;
 input                       diram_rd_ack;
@@ -64,7 +64,7 @@ reg     [6:0]               code_index;
 reg                         diram_rd_pend;
 reg     [ 3:0]              diram_cache;
 reg     [ 2:0]              diram_cache_cnt;
-reg     [ 5:0]              diram_sign;
+reg                         diram_sign;
 wire                        diram_cache_low;
 wire                        punc;
 reg     [7:0]               cc13_reg;
@@ -91,7 +91,7 @@ always @(posedge clk or posedge rst) begin
             diram_rd_req <= 1'd1;
             diram_raddr <= base_sys;
         end
-        else if (ser_en & diram_cache_low & (~diram_cache_pend)) begin
+        else if (ser_en & diram_cache_low & (~diram_rd_pend)) begin
             diram_rd_req <= 1'd1;
             diram_raddr <= diram_raddr + 1;
         end
@@ -106,7 +106,7 @@ always @(posedge clk or posedge rst) begin
         if (start) begin
             diram_rd_pend <= 1'd1;
         end
-        else if (ser_en & diram_cache_low & (~diram_cache_pend)) begin
+        else if (ser_en & diram_cache_low & (~diram_rd_pend)) begin
             diram_rd_pend <= 1'd1;
         end
         else if (diram_rd_ack) begin
@@ -139,7 +139,7 @@ always @(posedge clk or posedge rst) begin
 end
 // diram_cache_low
 assign diram_cache_low = (diram_cache_cnt == 3'd0) ? 1'b1 : 1'b0;
-//diram_data
+//diram_sign
 always @(*) begin
     case (diram_cache_cnt)
         2'b00 : diram_sign = diram_cache[3];
@@ -342,7 +342,7 @@ always @(posedge clk or posedge rst) begin
             ser_acc <= 7'd0;
         end
         else if (ser_en & (~diram_cache_low) & (~punc)) begin
-            if (cur_data != diram_data) begin
+            if (cur_data != diram_sign) begin
                 ser_acc <= ser_acc + 1;
             end
         end

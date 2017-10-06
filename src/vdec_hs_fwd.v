@@ -20,7 +20,7 @@ module vdec_hs_fwd (
     start,
     busy,
     done,
-    codeblk_size_p7,    // ???
+    codeblk_size_p7,
     hs_mode,
     ue_mask,
     base_sys,
@@ -332,10 +332,10 @@ always @(posedge clk or posedge rst) begin
                     end
                     else begin
                         if (code_index[0]) begin
-                            c0_next <= ({6{cc_g0}} ^ diram_cache[41:36]) + cc_reg0;
+                            c0_next <= ({6{cc_g0}} ^ diram_cache[41:36]) + cc_g0;
                         end
                         else begin
-                            c0_next <= ({6{cc_g1}} ^ diram_cache[41:36]) + cc_reg1;
+                            c0_next <= ({6{cc_g1}} ^ diram_cache[41:36]) + cc_g1;
                         end
                     end
                 end
@@ -346,10 +346,10 @@ always @(posedge clk or posedge rst) begin
                     end
                     else begin
                         if (code_index[0]) begin
-                            c1_next <= ({6{cc_g0}} ^ diram_cache[41:36]) + cc_reg0;
+                            c1_next <= ({6{cc_g0}} ^ diram_cache[41:36]) + cc_g0;
                         end
                         else begin
-                            c1_next <= ({6{cc_g1}} ^ diram_cache[41:36]) + cc_reg1;
+                            c1_next <= ({6{cc_g1}} ^ diram_cache[41:36]) + cc_g1;
                         end
                     end
                 end
@@ -360,10 +360,10 @@ always @(posedge clk or posedge rst) begin
                     end
                     else begin
                         if (code_index[0]) begin
-                            c2_next <= ({6{cc_g0}} ^ diram_cache[41:36]) + cc_reg0;
+                            c2_next <= ({6{cc_g0}} ^ diram_cache[41:36]) + cc_g0;
                         end
                         else begin
-                            c2_next <= ({6{cc_g1}} ^ diram_cache[41:36]) + cc_reg1;
+                            c2_next <= ({6{cc_g1}} ^ diram_cache[41:36]) + cc_g1;
                         end
                     end
                 end

@@ -97,6 +97,7 @@ output                      done_ns_hsscch_part1;
 output                      done_ns_hsscch_part2;
 output  [31:0]              status;
 input                       mpreq;
+input                       mpasel;
 input   [11:0]              mpa;
 input   [31:0]              mpd;
 output  [31:0]              mpq;
@@ -148,6 +149,7 @@ input   [31:0]              pt_q_in;
 // internal wires
 //---------------------------------------------------------------------------
 wire                        rst;
+wire                        rst_n;
 wire                        vdec_hs_start;
 wire                        vdec_hs_busy;
 wire                        vdec_hs_done;
@@ -170,22 +172,22 @@ reg     [5:0]               codeblk_size_p7;
 wire    [15:0]              hs_uemask;
 wire    [15:0]              agch_uemask;
 reg     [ 8:0]              base_sys;
-wire                        sm0_rd;
-wire                        sm0_wr;
-wire    [ 5:0]              sm0_addr;
-wire    [31:0]              sm0_din;
-wire    [31:0]              sm0_dout;
-wire                        sm1_rd;
-wire                        sm1_wr;
-wire    [ 5:0]              sm1_addr;
-wire    [31:0]              sm1_din;
-wire    [31:0]              sm1_dout;
-wire                        pt_wr;
-wire    [ 8:0]              pt_wr_addr;
-wire    [31:0]              pt_din;
-wire                        pt_rd;
-wire    [ 8:0]              pt_rd_addr;
-wire    [31:0]              pt_dout;
+wire                        fwd_sm0_rd;
+wire                        fwd_sm0_wr;
+wire    [ 5:0]              fwd_sm0_addr;
+wire    [31:0]              fwd_sm0_din;
+wire    [31:0]              fwd_sm0_dout;
+wire                        fwd_sm1_rd;
+wire                        fwd_sm1_wr;
+wire    [ 5:0]              fwd_sm1_addr;
+wire    [31:0]              fwd_sm1_din;
+wire    [31:0]              fwd_sm1_dout;
+wire                        fwd_pt_wr;
+wire    [ 8:0]              fwd_pt_wr_addr;
+wire    [31:0]              fwd_pt_din;
+wire                        bwd_pt_rd;
+wire    [ 8:0]              bwd_pt_rd_addr;
+wire    [31:0]              bwd_pt_dout;
 wire                        bwd_busy;
 wire    [28:0]              bwd_dec_bits;
 wire                        crc_busy;
@@ -214,10 +216,50 @@ reg     [ 7:0]              ca1_part1_c0;
 reg     [ 7:0]              ca1_part1_c1;
 reg     [ 7:0]              ca1_part1_c2;
 reg     [ 7:0]              ca1_part1_c3;
+wire                        sm0_mpasel;
+wire                        sm1_mpasel;
+wire                        pt_mpasel;
+wire                        sm0_mpr;
+wire                        sm1_mpr;
+wire                        pt_mpr;
+wire                        sm0_mpw;
+wire                        sm1_mpw;
+wire                        pt_mpw;
+wire                        sm0_mpbusy;
+wire                        sm1_mpbusy;
+wire                        pt_mpbusy;
+wire    [3:0]               sm0_rd_req;
+wire    [3:0]               sm0_wr_req;
+wire    [3:0]               sm0_rd_ack;
+wire    [3:0]               sm0_wr_ack;
+wire    [3:0]               sm0_rd_req_ack;
+wire    [3:0]               sm0_wr_req_ack;
+wire    [3:0]               sm0_rd_reqreg;
+wire    [3:0]               sm0_wr_reqreg;
+wire    [3:0]               sm0_ram_chan_sel;
+wire    [3:0]               sm1_rd_req;
+wire    [3:0]               sm1_wr_req;
+wire    [3:0]               sm1_rd_ack;
+wire    [3:0]               sm1_wr_ack;
+wire    [3:0]               sm1_rd_req_ack;
+wire    [3:0]               sm1_wr_req_ack;
+wire    [3:0]               sm1_rd_reqreg;
+wire    [3:0]               sm1_wr_reqreg;
+wire    [3:0]               sm1_ram_chan_sel;
+wire    [3:0]               pt_rd_req;
+wire    [3:0]               pt_wr_req;
+wire    [3:0]               pt_rd_ack;
+wire    [3:0]               pt_wr_ack;
+wire    [3:0]               pt_rd_req_ack;
+wire    [3:0]               pt_wr_req_ack;
+wire    [3:0]               pt_rd_reqreg;
+wire    [3:0]               pt_wr_reqreg;
+wire    [3:0]               pt_ram_chan_sel;
 //---------------------------------------------------------------------------
 // TOP LOGIC
 //---------------------------------------------------------------------------
 assign rst              = res;
+assign rst_n            = ~res;
 assign busy             = vdec_hs_busy;
 assign vdec_hs_start    = start_part1 | start_part2 | start_ns_part1 | start_ns_part2 | start_agch;
 assign hs_uemask        = ns_type ? ns_hsscch_uemask : hsscch_uemask;
@@ -488,19 +530,19 @@ vdec_hs_fwd u1_fwd (
     .diram_rd_ack           ( fwd_diram_rd_ack              ),
     .diram_raddr            ( fwd_diram_rd_addr             ),
     .diram_rdata            ( fwd_diram_dout                ),
-    .sm0_rd                 ( sm0_rd                        ),
-    .sm0_wr                 ( sm0_wr                        ),
-    .sm0_addr               ( sm0_addr                      ),
-    .sm0_din                ( sm0_din                       ),
-    .sm0_dout               ( sm0_dout                      ),
-    .sm1_rd                 ( sm1_rd                        ),
-    .sm1_wr                 ( sm1_wr                        ),
-    .sm1_addr               ( sm1_addr                      ),
-    .sm1_din                ( sm1_din                       ),
-    .sm1_dout               ( sm1_dout                      ),
-    .pt_wr                  ( pt_wr                         ),
-    .pt_addr                ( pt_wr_addr                    ),
-    .pt_din                 ( pt_din                        )
+    .sm0_rd                 ( fwd_sm0_rd                    ),
+    .sm0_wr                 ( fwd_sm0_wr                    ),
+    .sm0_addr               ( fwd_sm0_addr                  ),
+    .sm0_din                ( fwd_sm0_din                   ),
+    .sm0_dout               ( fwd_sm0_dout                  ),
+    .sm1_rd                 ( fwd_sm1_rd                    ),
+    .sm1_wr                 ( fwd_sm1_wr                    ),
+    .sm1_addr               ( fwd_sm1_addr                  ),
+    .sm1_din                ( fwd_sm1_din                   ),
+    .sm1_dout               ( fwd_sm1_dout                  ),
+    .pt_wr                  ( fwd_pt_wr                     ),
+    .pt_addr                ( fwd_pt_wr_addr                ),
+    .pt_din                 ( fwd_pt_din                    )
 );
 //---------------------------------------------------------------------------
 // VDEC_HS TRACEBACK PROC
@@ -513,9 +555,9 @@ vdec_hs_bwd u2_traceback (
     .done                   ( bwd_done                      ),
     .dec_bits               ( bwd_dec_bits                  ),
     .codeblk_size_p7        ( codeblk_size_p7               ),
-    .pt_rd                  ( pt_rd                         ),
-    .pt_addr                ( pt_rd_addr                    ),
-    .pt_dout                ( pt_dout                       )
+    .pt_rd                  ( bwd_pt_rd                     ),
+    .pt_addr                ( bwd_pt_rd_addr                ),
+    .pt_dout                ( bwd_pt_dout                   )
 );
 //---------------------------------------------------------------------------
 // VDEC_HS CRC CHECK
@@ -589,6 +631,107 @@ assign fwd_diram_rd_ack = diram_rd_ack;
 assign ser_diram_rd_ack = diram_rd_ack;
 assign fwd_diram_dout   = diram_dout;
 assign ser_diram_dout   = diram_dout;
+//---------------------------------------------------------------------------
+// MPU BUS
+//---------------------------------------------------------------------------
+// address allocation
+// RAM          BUS_VALUE                   START_ADDR
+// smram0       mpa[11:8] == 4'b0000        0x000
+// smram1       mpa[11:8] == 4'b0001        0x100
+// ptram        mpa[11:8] == 4'b1xxx        0x800
+assign sm0_mpasel = (mpa[11] == 1'b0 && mpa[10:8] == 3'b000) ? 1'b1 : 1'b0;
+assign sm1_mpasel = (mpa[11] == 1'b0 && mpa[10:8] == 3'b001) ? 1'b1 : 1'b0;
+assign pt_mpasel  = (mpa[11] == 1'b1                       ) ? 1'b1 : 1'b0;
+assign sm0_mpr    = u_mpr & sm0_mpasel;
+assign sm1_mpr    = u_mpr & sm1_mpasel;
+assign pt_mpr     = u_mpr & pt_mpasel;
+assign sm0_mpw    = u_mpw & sm0_mpasel;
+assign sm1_mpw    = u_mpw & sm1_mpasel;
+assign pt_mpw     = u_mpw & pt_mpasel;
+// smram0
+ram_multiport u_smram0 (
+    .clk                    ( clk                           ),
+    .rst_n                  ( rst_n                         ),
+    .rd_req                 ( sm0_rd_req                    ),
+    .wr_req                 ( sm0_wr_req                    ),
+    .rd_ack                 ( sm0_rd_ack                    ),
+    .wr_ack                 ( sm0_wr_ack                    ),
+    .rd_req_ack             ( sm0_rd_req_ack                ),
+    .wr_req_ack             ( sm0_wr_req_ack                ),
+    .rd_reqreg              ( sm0_rd_reqreg                 ),
+    .wr_reqreg              ( sm0_wr_reqreg                 ),
+    .ram_chan_sel           ( sm0_ram_chan_sel              ),
+    .ram_cen_out            ( sm0_cen_out                   ),
+    .ram_wen_out            ( sm0_wen_out                   )
+);
+assign sm0_rd_req[0]        = fwd_sm0_rd;
+assign sm0_rd_req[1]        = sm0_mpr;
+assign sm0_rd_req[2]        = 1'd0;
+assign sm0_rd_req[3]        = 1'd0;
+assign sm0_wr_req[0]        = fwd_sm0_wr;
+assign sm0_wr_req[1]        = sm0_mpw;
+assign sm0_wr_req[2]        = 1'd0;
+assign sm0_wr_req[3]        = 1'd0;
+assign sm0_a_out            = (sm0_rd_req[0] | sm0_wr_req[0]) ? fwd_sm0_addr : mpa[7:2];
+assign sm0_d_out            = (                sm0_wr_req[0]) ? fwd_sm0_din  : mpd[31:0];
+assign fwd_sm0_dout         = sm0_q_in;
+assign sm0_mpbusy           = mpreq | sm0_rd_reqreg[1] | sm0_rd_ack[1] | sm0_wr_reqreg[1] | sm0_wr_ack[1];
+// smram1
+ram_multiport u_smram1 (
+    .clk                    ( clk                           ),
+    .rst_n                  ( rst_n                         ),
+    .rd_req                 ( sm1_rd_req                    ),
+    .wr_req                 ( sm1_wr_req                    ),
+    .rd_ack                 ( sm1_rd_ack                    ),
+    .wr_ack                 ( sm1_wr_ack                    ),
+    .rd_req_ack             ( sm1_rd_req_ack                ),
+    .wr_req_ack             ( sm1_wr_req_ack                ),
+    .rd_reqreg              ( sm1_rd_reqreg                 ),
+    .wr_reqreg              ( sm1_wr_reqreg                 ),
+    .ram_chan_sel           ( sm1_ram_chan_sel              ),
+    .ram_cen_out            ( sm1_cen_out                   ),
+    .ram_wen_out            ( sm1_wen_out                   )
+);
+assign sm1_rd_req[0]        = fwd_sm1_rd;
+assign sm1_rd_req[1]        = sm1_mpr;
+assign sm1_rd_req[2]        = 1'd0;
+assign sm1_rd_req[3]        = 1'd0;
+assign sm1_wr_req[0]        = fwd_sm1_wr;
+assign sm1_wr_req[1]        = sm1_mpw;
+assign sm1_wr_req[2]        = 1'd0;
+assign sm1_wr_req[3]        = 1'd0;
+assign sm1_a_out            = (sm1_rd_req[0] | sm1_wr_req[0]) ? fwd_sm1_addr : mpa[7:2];
+assign sm1_d_out            = (                sm1_wr_req[0]) ? fwd_sm1_din  : mpd[31:0];
+assign fwd_sm1_dout         = sm1_q_in;
+assign sm1_mpbusy           = mpreq | sm1_rd_reqreg[1] | sm1_rd_ack[1] | sm1_wr_reqreg[1] | sm1_wr_ack[1];
+// ptram
+ram_multiport u_ptram (
+    .clk                    ( clk                           ),
+    .rst_n                  ( rst_n                         ),
+    .rd_req                 ( pt_rd_req                     ),
+    .wr_req                 ( pt_wr_req                     ),
+    .rd_ack                 ( pt_rd_ack                     ),
+    .wr_ack                 ( pt_wr_ack                     ),
+    .rd_req_ack             ( pt_rd_req_ack                 ),
+    .wr_req_ack             ( pt_wr_req_ack                 ),
+    .rd_reqreg              ( pt_rd_reqreg                  ),
+    .wr_reqreg              ( pt_wr_reqreg                  ),
+    .ram_chan_sel           ( pt_ram_chan_sel               ),
+    .ram_cen_out            ( pt_cen_out                    ),
+    .ram_wen_out            ( pt_wen_out                    )
+);
+assign pt_rd_req[0]         = bwd_pt_rd;
+assign pt_rd_req[1]         = pt_mpr;
+assign pt_rd_req[2]         = 1'd0;
+assign pt_rd_req[3]         = 1'd0;
+assign pt_wr_req[0]         = fwd_pt_wr;
+assign pt_wr_req[1]         = pt_mpw;
+assign pt_wr_req[2]         = 1'd0;
+assign pt_wr_req[3]         = 1'd0;
+assign pt_a_out             = pt_rd_req[0] ? bwd_pt_rd_addr : (pt_wr_req[0] ? fwd_pt_wr_addr : mpa[7:2]);
+assign pt_d_out             = pt_wr_req[0] ? fwd_pt_din : mpd[31:0];
+assign bwd_pt_dout          = pt_q_in;
+assign pt_mpbusy            = mpreq | pt_rd_reqreg[1] | pt_rd_ack[1] | pt_wr_reqreg[1] | pt_wr_ack[1];
 
 endmodule
 
