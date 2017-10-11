@@ -263,22 +263,22 @@ assign cc13_g2 = cc13_reg[7] ^ cc13_reg[4] ^ cc13_reg[1] ^ cc13_reg[0] ^ cc13_in
 always @(*) begin
     if (hs_mode == 2'b00) begin
         case (code_index[6:1])
-            6'd0    : cc12_in = ue_mask[0];
-            6'd1    : cc12_in = ue_mask[1];
-            6'd2    : cc12_in = ue_mask[2];
-            6'd3    : cc12_in = ue_mask[3];
-            6'd4    : cc12_in = ue_mask[4];
-            6'd5    : cc12_in = ue_mask[5];
-            6'd6    : cc12_in = ue_mask[6];
-            6'd7    : cc12_in = ue_mask[7];
-            6'd8    : cc12_in = ue_mask[8];
-            6'd9    : cc12_in = ue_mask[9];
-            6'd10   : cc12_in = ue_mask[10];
-            6'd11   : cc12_in = ue_mask[11];
-            6'd12   : cc12_in = ue_mask[12];
-            6'd13   : cc12_in = ue_mask[13];
-            6'd14   : cc12_in = ue_mask[14];
-            6'd15   : cc12_in = ue_mask[15];
+            6'd0    : cc12_in = ue_mask[15];
+            6'd1    : cc12_in = ue_mask[14];
+            6'd2    : cc12_in = ue_mask[13];
+            6'd3    : cc12_in = ue_mask[12];
+            6'd4    : cc12_in = ue_mask[11];
+            6'd5    : cc12_in = ue_mask[10];
+            6'd6    : cc12_in = ue_mask[9];
+            6'd7    : cc12_in = ue_mask[8];
+            6'd8    : cc12_in = ue_mask[7];
+            6'd9    : cc12_in = ue_mask[6];
+            6'd10   : cc12_in = ue_mask[5];
+            6'd11   : cc12_in = ue_mask[4];
+            6'd12   : cc12_in = ue_mask[3];
+            6'd13   : cc12_in = ue_mask[2];
+            6'd14   : cc12_in = ue_mask[1];
+            6'd15   : cc12_in = ue_mask[0];
             default : cc12_in = 1'd0;
         endcase
     end

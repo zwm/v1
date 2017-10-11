@@ -128,8 +128,9 @@ reg                         smram_rd_d3;
 reg                         smram_rd_d4;
 reg                         smram_rd_d5;
 reg                         smram_rd_d6;
-wire    [23:0]              smram_dout;
+wire    [31:0]              smram_dout;
 reg     [31:0]              a_states_reg;
+reg     [31:0]              a_states_reg_d1;
 reg     [31:0]              b_states_reg;
 wire                        e0;
 wire                        e1;
@@ -266,22 +267,22 @@ end
 always @(*) begin
     if (hs_mode == 2'b00) begin
         case (code_index[6:1])
-            6'd0    : cc_in = ue_mask[0];
-            6'd1    : cc_in = ue_mask[1];
-            6'd2    : cc_in = ue_mask[2];
-            6'd3    : cc_in = ue_mask[3];
-            6'd4    : cc_in = ue_mask[4];
-            6'd5    : cc_in = ue_mask[5];
-            6'd6    : cc_in = ue_mask[6];
-            6'd7    : cc_in = ue_mask[7];
-            6'd8    : cc_in = ue_mask[8];
-            6'd9    : cc_in = ue_mask[9];
-            6'd10   : cc_in = ue_mask[10];
-            6'd11   : cc_in = ue_mask[11];
-            6'd12   : cc_in = ue_mask[12];
-            6'd13   : cc_in = ue_mask[13];
-            6'd14   : cc_in = ue_mask[14];
-            6'd15   : cc_in = ue_mask[15];
+            6'd0    : cc_in = ue_mask[15];
+            6'd1    : cc_in = ue_mask[14];
+            6'd2    : cc_in = ue_mask[13];
+            6'd3    : cc_in = ue_mask[12];
+            6'd4    : cc_in = ue_mask[11];
+            6'd5    : cc_in = ue_mask[10];
+            6'd6    : cc_in = ue_mask[9];
+            6'd7    : cc_in = ue_mask[8];
+            6'd8    : cc_in = ue_mask[7];
+            6'd9    : cc_in = ue_mask[6];
+            6'd10   : cc_in = ue_mask[5];
+            6'd11   : cc_in = ue_mask[4];
+            6'd12   : cc_in = ue_mask[3];
+            6'd13   : cc_in = ue_mask[2];
+            6'd14   : cc_in = ue_mask[1];
+            6'd15   : cc_in = ue_mask[0];
             default : cc_in = 1'd0;
         endcase
     end
@@ -306,8 +307,8 @@ always @(posedge clk or posedge rst) begin
     end
 end
 // UEID CC output
-assign cc_g0 = cc_reg[7] ^ cc_reg[3] ^ cc_reg[2] ^ cc_reg[1] ^ cc_in;
-assign cc_g1 = cc_reg[7] ^ cc_reg[6] ^ cc_reg[4] ^ cc_reg[2] ^ cc_reg[1] ^ cc_reg[0] ^ cc_in;
+assign cc_g0 = cc_reg[6] ^ cc_reg[5] ^ cc_reg[4] ^ cc_reg[0] ^ cc_in;   // modified 20171011, bit index of crc_reg reversed!
+assign cc_g1 = cc_reg[7] ^ cc_reg[6] ^ cc_reg[5] ^ cc_reg[3] ^ cc_reg[1] ^ cc_reg[0] ^ cc_in;
 // pre_load c0/1/2 next
 always @(posedge clk or posedge rst) begin
     if (rst) begin
@@ -333,10 +334,10 @@ always @(posedge clk or posedge rst) begin
                     end
                     else begin
                         if (code_index[0]) begin
-                            c0_next <= ({6{cc_g0}} ^ diram_cache[41:36]) + cc_g0;
+                            c0_next <= ({6{cc_g1}} ^ diram_cache[41:36]) + cc_g1;
                         end
                         else begin
-                            c0_next <= ({6{cc_g1}} ^ diram_cache[41:36]) + cc_g1;
+                            c0_next <= ({6{cc_g0}} ^ diram_cache[41:36]) + cc_g0;
                         end
                     end
                 end
@@ -347,10 +348,10 @@ always @(posedge clk or posedge rst) begin
                     end
                     else begin
                         if (code_index[0]) begin
-                            c1_next <= ({6{cc_g0}} ^ diram_cache[41:36]) + cc_g0;
+                            c1_next <= ({6{cc_g1}} ^ diram_cache[41:36]) + cc_g1;
                         end
                         else begin
-                            c1_next <= ({6{cc_g1}} ^ diram_cache[41:36]) + cc_g1;
+                            c1_next <= ({6{cc_g0}} ^ diram_cache[41:36]) + cc_g0;
                         end
                     end
                 end
@@ -361,10 +362,10 @@ always @(posedge clk or posedge rst) begin
                     end
                     else begin
                         if (code_index[0]) begin
-                            c2_next <= ({6{cc_g0}} ^ diram_cache[41:36]) + cc_g0;
+                            c2_next <= ({6{cc_g1}} ^ diram_cache[41:36]) + cc_g1;
                         end
                         else begin
-                            c2_next <= ({6{cc_g1}} ^ diram_cache[41:36]) + cc_g1;
+                            c2_next <= ({6{cc_g0}} ^ diram_cache[41:36]) + cc_g0;
                         end
                     end
                 end
@@ -461,9 +462,9 @@ always @(posedge clk or posedge rst) begin
                 default : diram_cache <= {diram_cache[41:24], diram_rdata                   };      // 3 left
             endcase
         end
-        else if (pre_load & (~punc)) begin
+        else if (pre_load & (~diram_cache_low) & (~punc)) begin
             diram_cache_cnt <= diram_cache_cnt - 1;
-            diram_cache <= {diram_cache[35:0], 8'd0};
+            diram_cache <= {diram_cache[35:0], 6'd0};
         end
     end
 end
@@ -517,7 +518,7 @@ always @(posedge clk or posedge rst) begin
         else if (fwd_start) begin
             cyc_en <= 1'd1;
         end
-        else if (stage == codeblk_size_p7 && cyc == 8'd255) begin
+        else if (stage == codeblk_size_p7 && cyc == 7'd127) begin
             cyc_en <= 1'd0;
         end
     end
@@ -602,7 +603,7 @@ assign sm_rd_addr   = {cyc[0], cyc[6:2]};
 assign smram_wr     = smram_rd_d6;
 assign sm0_wr       = smram_wr & ( smram_sel_d6);
 assign sm1_wr       = smram_wr & (~smram_sel_d6);
-assign sm_wr_addr   = {cyc_d6[0], cyc_d6[6:2]};
+assign sm_wr_addr   = {cyc_d6[6:2], cyc_d6[0]};     // bugfix, wr_addr gen diff from rd_addr
 assign sm0_addr     = sm0_rd ? sm_rd_addr : sm_wr_addr;
 assign sm1_addr     = sm1_rd ? sm_rd_addr : sm_wr_addr;
 // sm0_din
@@ -635,15 +636,17 @@ always @(*) begin
 end
 // When is stage0, previous state_metric has init value
 // state0 = 0, other_state = 8'd255
-assign smram_dout = smram_sel_d1 ? sm0_dout : sm1_dout;
+assign smram_dout = smram_sel_d1 ? sm1_dout : sm0_dout;
 // update A&B reg
 always @(posedge clk or posedge rst) begin
     if (rst) begin
         a_states_reg <= 32'd0;
+        a_states_reg_d1 <= 32'd0;
         b_states_reg <= 32'd0;
     end
     else begin
         if (cyc_en) begin
+            a_states_reg_d1 <= a_states_reg;        // to alianed with b, shitttt!!!
             if (stage == 6'd0) begin
                 if (cyc[6:2] == 4'd0) begin // first 4 cyc special, else {32{1'b1}}
                     a_states_reg <= {8'd0, {24{1'b1}}}; // state0 init to 0
@@ -725,44 +728,44 @@ end
 // E0/1/2 output
 assign e0 = cyc_d2[6] ^ cyc_d2[5] ^ cyc_d2[4] ^ cyc_d2[2] ^ cyc_d2[1];
 assign e1 = cyc_d2[6] ^ cyc_d2[3] ^ cyc_d2[2] ^ cyc_d2[0];
-assign e1 = cyc_d2[4] ^ cyc_d2[1] ^ cyc_d2[0];
+assign e2 = cyc_d2[4] ^ cyc_d2[1] ^ cyc_d2[0];
 
 assign abs_c0   = ({6{c0[5]}} ^ c0) + c0[5];
 assign abs_c1   = ({6{c1[5]}} ^ c1) + c1[5];
-assign abs_c2   = ({6{c2[5]}} ^ c2) + c0[5];
+assign abs_c2   = ({6{c2[5]}} ^ c2) + c2[5];
 assign abs_c01  = abs_c0 + abs_c1;
 assign abs_c12  = abs_c1 + abs_c2;
 assign abs_c02  = abs_c0 + abs_c2;
 assign abs_c012 = {1'b0, abs_c01} + {1'b0, abs_c2};
 
-assign match[0] = c0[5] ^ e0;
-assign match[1] = c1[5] ^ e1;
-assign match[2] = c2[5] ^ e2;
+assign match[0] = ~(c0[5] ^ e0);        // added "not logic" at 20171010
+assign match[1] = ~(c1[5] ^ e1);
+assign match[2] = ~(c2[5] ^ e2);
 
 // branch_ac
 always @(*) begin
     case (match)
-        3'b000  : branch_ac = abs_c012;
-        3'b001  : branch_ac = abs_c12;
-        3'b010  : branch_ac = abs_c02;
-        3'b011  : branch_ac = abs_c2;
-        3'b100  : branch_ac = abs_c01;
-        3'b101  : branch_ac = abs_c1;
-        3'b110  : branch_ac = abs_c0;
-        default : branch_ac = 7'd0;
+        3'b000  : branch_ac[6:0] = abs_c012[6:0];
+        3'b001  : branch_ac[6:0] = {1'd0, abs_c12};
+        3'b010  : branch_ac[6:0] = {1'd0, abs_c02};
+        3'b011  : branch_ac[6:0] = {1'd0, abs_c2};
+        3'b100  : branch_ac[6:0] = {1'd0, abs_c01};
+        3'b101  : branch_ac[6:0] = {1'd0, abs_c1};
+        3'b110  : branch_ac[6:0] = {1'd0, abs_c0};
+        default : branch_ac[6:0] = 7'd0;
     endcase
 end
 // branch_bc
 always @(*) begin
     case (~match)
-        3'b000  : branch_bc = abs_c012;
-        3'b001  : branch_bc = abs_c12;
-        3'b010  : branch_bc = abs_c02;
-        3'b011  : branch_bc = abs_c2;
-        3'b100  : branch_bc = abs_c01;
-        3'b101  : branch_bc = abs_c1;
-        3'b110  : branch_bc = abs_c0;
-        default : branch_bc = 7'd0;
+        3'b000  : branch_bc[6:0] = abs_c012[6:0];
+        3'b001  : branch_bc[6:0] = {1'd0, abs_c12};
+        3'b010  : branch_bc[6:0] = {1'd0, abs_c02};
+        3'b011  : branch_bc[6:0] = {1'd0, abs_c2};
+        3'b100  : branch_bc[6:0] = {1'd0, abs_c01};
+        3'b101  : branch_bc[6:0] = {1'd0, abs_c1};
+        3'b110  : branch_bc[6:0] = {1'd0, abs_c0};
+        default : branch_bc[6:0] = 7'd0;
     endcase
 end
 // branch_ac/bc reg
@@ -781,10 +784,10 @@ end
 // path_a
 always @(*) begin
     case (cyc_d3[1:0])
-        2'b00   : path_a = a_states_reg[31:24];
-        2'b01   : path_a = a_states_reg[23:16];
-        2'b10   : path_a = a_states_reg[15: 8];
-        default : path_a = a_states_reg[ 7: 0];
+        2'b00   : path_a = a_states_reg_d1[31:24];
+        2'b01   : path_a = a_states_reg_d1[23:16];
+        2'b10   : path_a = a_states_reg_d1[15: 8];
+        default : path_a = a_states_reg_d1[ 7: 0];
     endcase
 end
 // path_b
@@ -879,7 +882,7 @@ always @(posedge clk or posedge rst) begin
         pt_wr <= 1'd0;
     end
     else begin
-        if (cyc_d3[2:0] == 3'd7) begin
+        if (cyc_d3[3:0] == 4'd15) begin
             pt_wr <= 1'd1;
         end
         else begin
@@ -896,7 +899,7 @@ always @(posedge clk or posedge rst) begin
         if (start) begin
             pt_addr <= 9'd511;
         end
-        else if (cyc_d3[2:0] == 3'd7) begin
+        else if (cyc_d3[3:0] == 4'd15) begin
             pt_addr <= pt_addr + 1;
         end
     end
@@ -908,21 +911,21 @@ always @(posedge clk or posedge rst) begin
     end
     else begin
         if (busy) begin
-            if (cyc_d3 == 4'd0 ) pt_cache[ 1: 0] <= {state_d_src, state_c_src};
-            if (cyc_d3 == 4'd1 ) pt_cache[ 3: 2] <= {state_d_src, state_c_src};
-            if (cyc_d3 == 4'd2 ) pt_cache[ 5: 4] <= {state_d_src, state_c_src};
-            if (cyc_d3 == 4'd3 ) pt_cache[ 7: 6] <= {state_d_src, state_c_src};
-            if (cyc_d3 == 4'd4 ) pt_cache[ 9: 8] <= {state_d_src, state_c_src};
-            if (cyc_d3 == 4'd5 ) pt_cache[11:10] <= {state_d_src, state_c_src};
-            if (cyc_d3 == 4'd6 ) pt_cache[13:12] <= {state_d_src, state_c_src};
-            if (cyc_d3 == 4'd7 ) pt_cache[15:14] <= {state_d_src, state_c_src};
-            if (cyc_d3 == 4'd8 ) pt_cache[17:16] <= {state_d_src, state_c_src};
-            if (cyc_d3 == 4'd9 ) pt_cache[19:18] <= {state_d_src, state_c_src};
-            if (cyc_d3 == 4'd10) pt_cache[21:20] <= {state_d_src, state_c_src};
-            if (cyc_d3 == 4'd11) pt_cache[23:22] <= {state_d_src, state_c_src};
-            if (cyc_d3 == 4'd12) pt_cache[25:24] <= {state_d_src, state_c_src};
-            if (cyc_d3 == 4'd13) pt_cache[27:26] <= {state_d_src, state_c_src};
-            if (cyc_d3 == 4'd14) pt_cache[29:28] <= {state_d_src, state_c_src};
+            if (cyc_d3[3:0] == 4'd0 ) pt_cache[29:28] <= {state_c_src, state_d_src};
+            if (cyc_d3[3:0] == 4'd1 ) pt_cache[27:26] <= {state_c_src, state_d_src};
+            if (cyc_d3[3:0] == 4'd2 ) pt_cache[25:24] <= {state_c_src, state_d_src};
+            if (cyc_d3[3:0] == 4'd3 ) pt_cache[23:22] <= {state_c_src, state_d_src};
+            if (cyc_d3[3:0] == 4'd4 ) pt_cache[21:20] <= {state_c_src, state_d_src};
+            if (cyc_d3[3:0] == 4'd5 ) pt_cache[19:18] <= {state_c_src, state_d_src};
+            if (cyc_d3[3:0] == 4'd6 ) pt_cache[17:16] <= {state_c_src, state_d_src};
+            if (cyc_d3[3:0] == 4'd7 ) pt_cache[15:14] <= {state_c_src, state_d_src};
+            if (cyc_d3[3:0] == 4'd8 ) pt_cache[13:12] <= {state_c_src, state_d_src};
+            if (cyc_d3[3:0] == 4'd9 ) pt_cache[11:10] <= {state_c_src, state_d_src};
+            if (cyc_d3[3:0] == 4'd10) pt_cache[ 9: 8] <= {state_d_crc, state_c_drc};
+            if (cyc_d3[3:0] == 4'd11) pt_cache[ 7: 6] <= {state_d_crc, state_c_drc};
+            if (cyc_d3[3:0] == 4'd12) pt_cache[ 5: 4] <= {state_d_crc, state_c_drc};
+            if (cyc_d3[3:0] == 4'd13) pt_cache[ 3: 2] <= {state_d_crc, state_c_drc};
+            if (cyc_d3[3:0] == 4'd14) pt_cache[ 1: 0] <= {state_d_crc, state_c_drc};
         end
     end
 end
@@ -932,8 +935,8 @@ always @(posedge clk or posedge rst) begin
         pt_din <= 32'd0;
     end
     else begin
-        if (cyc_d3[2:0] == 3'd7) begin
-            pt_din <= {state_d_src, state_c_src, pt_cache[29:0]};
+        if (cyc_d3[3:0] == 4'd15) begin
+            pt_din <= {pt_cache[29:0], state_c_src, state_d_src};
         end
     end
 end

@@ -765,7 +765,39 @@ assign done_agch            = (hs_mode == 2'd2) ? vdec_hs_done : 1'd0;
 assign status               = {29'd0, fsm_out[2:0]}; // ??? more info???
 assign vdec_crc             = crc_match;
 assign vdec_ser_acc         = ser_acc;
-assign vdec_output          = {2'd0, bwd_dec_bits};
+// vdec_output is bit reversed of bwd_dec_bits to compatible with V2!!!
+assign vdec_output[31]      = bwd_dec_bits[ 0];
+assign vdec_output[30]      = bwd_dec_bits[ 1];
+assign vdec_output[29]      = bwd_dec_bits[ 2];
+assign vdec_output[28]      = bwd_dec_bits[ 3];
+assign vdec_output[27]      = bwd_dec_bits[ 4];
+assign vdec_output[26]      = bwd_dec_bits[ 5];
+assign vdec_output[25]      = bwd_dec_bits[ 6];
+assign vdec_output[24]      = bwd_dec_bits[ 7];
+assign vdec_output[23]      = bwd_dec_bits[ 8];
+assign vdec_output[22]      = bwd_dec_bits[ 9];
+assign vdec_output[21]      = bwd_dec_bits[10];
+assign vdec_output[20]      = bwd_dec_bits[11];
+assign vdec_output[19]      = bwd_dec_bits[12];
+assign vdec_output[18]      = bwd_dec_bits[13];
+assign vdec_output[17]      = bwd_dec_bits[14];
+assign vdec_output[16]      = bwd_dec_bits[15];
+assign vdec_output[15]      = bwd_dec_bits[16];
+assign vdec_output[14]      = bwd_dec_bits[17];
+assign vdec_output[13]      = bwd_dec_bits[18];
+assign vdec_output[12]      = bwd_dec_bits[19];
+assign vdec_output[11]      = bwd_dec_bits[20];
+assign vdec_output[10]      = bwd_dec_bits[21];
+assign vdec_output[9]       = bwd_dec_bits[22];
+assign vdec_output[8]       = bwd_dec_bits[23];
+assign vdec_output[7]       = bwd_dec_bits[24];
+assign vdec_output[6]       = bwd_dec_bits[25];
+assign vdec_output[5]       = bwd_dec_bits[26];
+assign vdec_output[4]       = bwd_dec_bits[27];
+assign vdec_output[3]       = bwd_dec_bits[28];
+assign vdec_output[2]       = 1'd0;
+assign vdec_output[1]       = 1'd0;
+assign vdec_output[0]       = 1'd0;
 // agch crc1 & crc2
 always @(posedge clk or posedge rst) begin
     if (rst) begin
