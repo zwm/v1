@@ -307,7 +307,7 @@ always @(posedge clk or posedge rst) begin
     end
 end
 // UEID CC output
-assign cc_g0 = cc_reg[6] ^ cc_reg[5] ^ cc_reg[4] ^ cc_reg[0] ^ cc_in;   // modified 20171011, bit index of crc_reg reversed!
+assign cc_g0 = cc_reg[6] ^ cc_reg[5] ^ cc_reg[4] ^ cc_reg[0] ^ cc_in;   // modified 20171011, bit index of crc_reg reversed!!
 assign cc_g1 = cc_reg[7] ^ cc_reg[6] ^ cc_reg[5] ^ cc_reg[3] ^ cc_reg[1] ^ cc_reg[0] ^ cc_in;
 // pre_load c0/1/2 next
 always @(posedge clk or posedge rst) begin
