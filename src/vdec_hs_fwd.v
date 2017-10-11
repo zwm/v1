@@ -921,11 +921,11 @@ always @(posedge clk or posedge rst) begin
             if (cyc_d3[3:0] == 4'd7 ) pt_cache[15:14] <= {state_c_src, state_d_src};
             if (cyc_d3[3:0] == 4'd8 ) pt_cache[13:12] <= {state_c_src, state_d_src};
             if (cyc_d3[3:0] == 4'd9 ) pt_cache[11:10] <= {state_c_src, state_d_src};
-            if (cyc_d3[3:0] == 4'd10) pt_cache[ 9: 8] <= {state_d_crc, state_c_drc};
-            if (cyc_d3[3:0] == 4'd11) pt_cache[ 7: 6] <= {state_d_crc, state_c_drc};
-            if (cyc_d3[3:0] == 4'd12) pt_cache[ 5: 4] <= {state_d_crc, state_c_drc};
-            if (cyc_d3[3:0] == 4'd13) pt_cache[ 3: 2] <= {state_d_crc, state_c_drc};
-            if (cyc_d3[3:0] == 4'd14) pt_cache[ 1: 0] <= {state_d_crc, state_c_drc};
+            if (cyc_d3[3:0] == 4'd10) pt_cache[ 9: 8] <= {state_c_src, state_d_src};
+            if (cyc_d3[3:0] == 4'd11) pt_cache[ 7: 6] <= {state_c_src, state_d_src};
+            if (cyc_d3[3:0] == 4'd12) pt_cache[ 5: 4] <= {state_c_src, state_d_src};
+            if (cyc_d3[3:0] == 4'd13) pt_cache[ 3: 2] <= {state_c_src, state_d_src};
+            if (cyc_d3[3:0] == 4'd14) pt_cache[ 1: 0] <= {state_c_src, state_d_src};
         end
     end
 end
