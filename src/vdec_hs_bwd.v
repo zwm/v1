@@ -16,7 +16,7 @@
 //////////////////////////////////////////////////////////////////////////////
 module vdec_hs_bwd (
     clk,
-    rst,
+    rst_n,
     start,
     busy,
     done,
@@ -31,7 +31,7 @@ module vdec_hs_bwd (
 // port
 //---------------------------------------------------------------------------
 input                       clk;
-input                       rst;
+input                       rst_n;
 input                       start;
 output                      busy;
 output                      done;
@@ -54,8 +54,8 @@ reg                         done_tmp1;
 reg     [5:0]               pt_stage;
 reg     [2:0]               pt_state;
 // pt_stage
-always @(posedge clk or posedge rst) begin
-    if (rst) begin
+always @(posedge clk or negedge rst_n) begin
+    if (~rst_n) begin
         pt_stage <= 6'd0;
     end
     else begin
@@ -79,8 +79,8 @@ end
 // pt_addr
 assign pt_addr = {pt_stage, pt_state};
 // pt_rd
-always @(posedge clk or posedge rst) begin
-    if (rst) begin
+always @(posedge clk or negedge rst_n) begin
+    if (~rst_n) begin
         pt_rd <= 1'd0;
     end
     else begin
@@ -93,8 +93,8 @@ always @(posedge clk or posedge rst) begin
     end
 end
 // pt_rd_d1
-always @(posedge clk or posedge rst) begin
-    if (rst) begin
+always @(posedge clk or negedge rst_n) begin
+    if (~rst_n) begin
         pt_rd_d1 <= 1'd0;
     end
     else begin
@@ -102,8 +102,8 @@ always @(posedge clk or posedge rst) begin
     end
 end
 // cur_state
-always @(posedge clk or posedge rst) begin
-    if (rst) begin
+always @(posedge clk or negedge rst_n) begin
+    if (~rst_n) begin
         cur_state <= 8'd0;
     end
     else begin
@@ -153,8 +153,8 @@ always @(*) begin
     endcase
 end
 // train_ctn
-always @(posedge clk or posedge rst) begin
-    if (rst) begin
+always @(posedge clk or negedge rst_n) begin
+    if (~rst_n) begin
         train_cnt <= 4'd0;
     end
     else begin
@@ -168,8 +168,8 @@ always @(posedge clk or posedge rst) begin
     end
 end
 // output
-always @(posedge clk or posedge rst) begin
-    if (rst) begin
+always @(posedge clk or negedge rst_n) begin
+    if (~rst_n) begin
         dec_bits <= 29'd0;
     end
     else begin
@@ -183,8 +183,8 @@ always @(posedge clk or posedge rst) begin
     end
 end
 // done
-always @(posedge clk or posedge rst) begin
-    if (rst) begin
+always @(posedge clk or negedge rst_n) begin
+    if (~rst_n) begin
         done_tmp1 <= 1'd0;
         done <= 1'd0;
     end
@@ -199,8 +199,8 @@ always @(posedge clk or posedge rst) begin
     end
 end
 // busy
-always @(posedge clk or posedge rst) begin
-    if (rst) begin
+always @(posedge clk or negedge rst_n) begin
+    if (~rst_n) begin
         busy <= 1'd0;
     end
     else begin

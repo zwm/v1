@@ -17,7 +17,7 @@
 //////////////////////////////////////////////////////////////////////////////
 module vdec_hs_ser (
     clk,
-    rst,
+    rst_n,
     start,
     busy,
     done,
@@ -37,7 +37,7 @@ module vdec_hs_ser (
 // port
 //---------------------------------------------------------------------------
 input                       clk;
-input                       rst;
+input                       rst_n;
 input                       start;
 output                      busy;
 output                      done;
@@ -81,8 +81,8 @@ reg                         cur_data;
 // diram cache management
 //---------------------------------------------------------------------------
 // diram read
-always @(posedge clk or posedge rst) begin
-    if (rst) begin
+always @(posedge clk or negedge rst_n) begin
+    if (~rst_n) begin
         diram_rd_req <= 1'd0;
         diram_raddr <= 10'd0;
     end
@@ -101,8 +101,8 @@ always @(posedge clk or posedge rst) begin
     end
 end
 // diram read pend
-always @(posedge clk or posedge rst) begin
-    if (rst) begin
+always @(posedge clk or negedge rst_n) begin
+    if (~rst_n) begin
         diram_rd_pend <= 1'd0;
     end
     else begin
@@ -118,8 +118,8 @@ always @(posedge clk or posedge rst) begin
     end
 end
 // diram_cache
-always @(posedge clk or posedge rst) begin
-    if (rst) begin
+always @(posedge clk or negedge rst_n) begin
+    if (~rst_n) begin
         diram_cache <= 4'd0;
         diram_cache_cnt <= 3'd0;
     end
@@ -129,10 +129,10 @@ always @(posedge clk or posedge rst) begin
             diram_cache_cnt <= 3'd0;
         end
         else if (ser_en & diram_cache_low & diram_rd_ack) begin
-            diram_cache[0] <= diram_rdata[5];
-            diram_cache[1] <= diram_rdata[11];
-            diram_cache[2] <= diram_rdata[17];
-            diram_cache[3] <= diram_rdata[23];
+            diram_cache[3] <= diram_rdata[5];
+            diram_cache[2] <= diram_rdata[11];
+            diram_cache[1] <= diram_rdata[17];
+            diram_cache[0] <= diram_rdata[23];
             diram_cache_cnt <= 3'd4;
         end
         else if (ser_en & (~punc) & (~diram_cache_low)) begin
@@ -145,15 +145,16 @@ assign diram_cache_low = (diram_cache_cnt == 3'd0) ? 1'b1 : 1'b0;
 //diram_sign
 always @(*) begin
     case (diram_cache_cnt)
-        2'b00 : diram_sign = diram_cache[3];
-        2'b01 : diram_sign = diram_cache[2];
-        2'b10 : diram_sign = diram_cache[1];
-        2'b11 : diram_sign = diram_cache[0];
+        3'd1  : diram_sign = diram_cache[3];
+        3'd2  : diram_sign = diram_cache[2];
+        3'd3  : diram_sign = diram_cache[1];
+        3'd4  : diram_sign = diram_cache[0];
+        default : diram_sign = 1'd0;
     endcase
 end
 // ser_en
-always @(posedge clk or posedge rst) begin
-    if (rst) begin
+always @(posedge clk or negedge rst_n) begin
+    if (~rst_n) begin
         ser_en <= 1'd0;
     end
     else begin
@@ -166,8 +167,8 @@ always @(posedge clk or posedge rst) begin
     end
 end
 // bit_index
-always @(posedge clk or posedge rst) begin
-    if (rst) begin
+always @(posedge clk or negedge rst_n) begin
+    if (~rst_n) begin
         bit_index <= 6'd0;
     end
     else begin
@@ -180,8 +181,8 @@ always @(posedge clk or posedge rst) begin
     end
 end
 // cc13_index
-always @(posedge clk or posedge rst) begin
-    if (rst) begin
+always @(posedge clk or negedge rst_n) begin
+    if (~rst_n) begin
         cc13_index <= 2'd0;
     end
     else begin
@@ -191,6 +192,20 @@ always @(posedge clk or posedge rst) begin
         else if (ser_en == 1 && (~diram_cache_low)) begin       // count range: 0~2
             cc13_index[0] <= ~(cc13_index[1] | cc13_index[0]);
             cc13_index[1] <= cc13_index[0];
+        end
+    end
+end
+// code_index
+always @(posedge clk or negedge rst_n) begin
+    if (~rst_n) begin
+        code_index <= 7'd0;
+    end
+    else begin
+        if (start) begin
+            code_index <= 7'd0;
+        end
+        else if (ser_en == 1 && (~diram_cache_low)) begin
+            code_index <= code_index + 1;
         end
     end
 end
@@ -235,12 +250,12 @@ always @(*) begin
         6'd26   : cc13_in = dec_bits[26];
         6'd27   : cc13_in = dec_bits[27];
         6'd28   : cc13_in = dec_bits[28];
-        default : cc13_in <= 1'd0;
+        default : cc13_in = 1'd0;
     endcase
 end
 // CC1/3 reg
-always @(posedge clk or posedge rst) begin
-    if (rst) begin
+always @(posedge clk or negedge rst_n) begin
+    if (~rst_n) begin
         cc13_reg <= 8'd0;
     end
     else begin
@@ -253,9 +268,9 @@ always @(posedge clk or posedge rst) begin
     end
 end
 // CC1/3 output
-assign cc13_g0 = cc13_reg[7] ^ cc13_reg[6] ^ cc13_reg[5] ^ cc13_reg[4] ^ cc13_reg[2] ^ cc13_reg[1] ^ cc13_in;
-assign cc13_g1 = cc13_reg[7] ^ cc13_reg[6] ^ cc13_reg[3] ^ cc13_reg[2] ^ cc13_reg[0] ^ cc13_in;
-assign cc13_g2 = cc13_reg[7] ^ cc13_reg[4] ^ cc13_reg[1] ^ cc13_reg[0] ^ cc13_in;
+assign cc13_g0 =               cc13_reg[6] ^ cc13_reg[5] ^               cc13_reg[3] ^ cc13_reg[2] ^ cc13_reg[1] ^ cc13_reg[0] ^ cc13_in;
+assign cc13_g1 = cc13_reg[7] ^               cc13_reg[5] ^ cc13_reg[4] ^                             cc13_reg[1] ^ cc13_reg[0] ^ cc13_in;
+assign cc13_g2 = cc13_reg[7] ^ cc13_reg[6] ^                             cc13_reg[3] ^                             cc13_reg[0] ^ cc13_in;
 //---------------------------------------------------------------------------
 // UE Mask CC1/2 coding
 //---------------------------------------------------------------------------
@@ -287,8 +302,8 @@ always @(*) begin
     end
 end
 // CC1/2 reg
-always @(posedge clk or posedge rst) begin
-    if (rst) begin
+always @(posedge clk or negedge rst_n) begin
+    if (~rst_n) begin
         cc12_reg <= 8'd0;
     end
     else begin
@@ -303,11 +318,11 @@ always @(posedge clk or posedge rst) begin
     end
 end
 // CC1/2 output
-assign cc12_g0 = cc12_reg[7] ^ cc12_reg[3] ^ cc12_reg[2] ^ cc12_reg[1] ^ cc12_in;
-assign cc12_g1 = cc12_reg[7] ^ cc12_reg[6] ^ cc12_reg[4] ^ cc12_reg[2] ^ cc12_reg[1] ^ cc12_reg[0] ^ cc12_in;
+assign cc12_g0 =               cc12_reg[6] ^ cc12_reg[5] ^ cc12_reg[4] ^                                           cc12_reg[0] ^ cc12_in;
+assign cc12_g1 = cc12_reg[7] ^ cc12_reg[6] ^ cc12_reg[5] ^               cc12_reg[3] ^               cc12_reg[1] ^ cc12_reg[0] ^ cc12_in;
 always @(*) begin
     if (cc13_index == 2'd0) begin               // g0
-        if (code_index[0]) begin
+        if (~code_index[0]) begin
             cur_data = cc13_g0 ^ cc12_g0;
         end
         else begin
@@ -315,7 +330,7 @@ always @(*) begin
         end
     end
     else if (cc13_index == 2'd1) begin          // g1
-        if (code_index[0]) begin
+        if (~code_index[0]) begin
             cur_data = cc13_g1 ^ cc12_g0;
         end
         else begin
@@ -323,7 +338,7 @@ always @(*) begin
         end
     end
     else begin                                  // g2
-        if (code_index[0]) begin
+        if (~code_index[0]) begin
             cur_data = cc13_g2 ^ cc12_g0;
         end
         else begin
@@ -336,8 +351,8 @@ end
 // SER Calc
 //---------------------------------------------------------------------------
 // ser_acc
-always @(posedge clk or posedge rst) begin
-    if (rst) begin
+always @(posedge clk or negedge rst_n) begin
+    if (~rst_n) begin
         ser_acc <= 7'd0;
     end
     else begin
@@ -355,8 +370,8 @@ end
 // Done & Busy
 //---------------------------------------------------------------------------
 // ser_en_d1
-always @(posedge clk or posedge rst) begin
-    if (rst) begin
+always @(posedge clk or negedge rst_n) begin
+    if (~rst_n) begin
         ser_en_d1 <= 1'd0;
     end
     else begin

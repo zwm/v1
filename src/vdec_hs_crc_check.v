@@ -15,28 +15,26 @@
 //////////////////////////////////////////////////////////////////////////////
 module vdec_hs_crc_check (
     clk,
-    rst,
+    rst_n,
     start,
     busy,
     done,
     crc_match,
-    info_bits,
-    crc_bits,
-    info_len
+    check_bits,
+    check_len
 );
 
 //---------------------------------------------------------------------------
 // port
 //---------------------------------------------------------------------------
 input                       clk;
-input                       rst;
+input                       rst_n;
 input                       start;
 output                      busy;
 output                      done;
 output                      crc_match;
-input   [20:0]              info_bits;
-input   [15:0]              crc_bits;
-input   [ 4:0]              info_len;
+input   [36:0]              check_bits;
+input   [ 5:0]              check_len;
 reg                         busy;
 reg                         done;
 reg                         crc_match;
@@ -44,16 +42,16 @@ reg                         crc_match;
 wire                        crc_in;
 reg     [15:0]              crc_reg;
 wire    [15:0]              crc_next;
-reg     [ 4:0]              bit_cnt;
-reg     [20:0]              info_cache;
+reg     [ 5:0]              bit_cnt;
+reg     [36:0]              data_cache;
 // bit_cnt
-always @(posedge clk or posedge rst) begin
-    if (rst) begin
-        bit_cnt <= 5'd0;
+always @(posedge clk or negedge rst_n) begin
+    if (~rst_n) begin
+        bit_cnt <= 6'd0;
     end
     else begin
         if (start) begin
-            bit_cnt <= info_len;
+            bit_cnt <= check_len;
         end
         else if (bit_cnt != 0) begin
             bit_cnt <= bit_cnt - 1;
@@ -63,8 +61,8 @@ end
 // crc_en
 assign crc_en = |bit_cnt;
 // crc_reg
-always @(posedge clk or posedge rst) begin
-    if (rst) begin
+always @(posedge clk or negedge rst_n) begin
+    if (~rst_n) begin
         crc_reg <= 16'd0;
     end
     else begin
@@ -76,22 +74,22 @@ always @(posedge clk or posedge rst) begin
         end
     end
 end
-// info_cache
-always @(posedge clk or posedge rst) begin
-    if (rst) begin
-        info_cache <= 21'd0;
+// data_cache
+always @(posedge clk or negedge rst_n) begin
+    if (~rst_n) begin
+        data_cache <= 37'd0;
     end
     else begin
         if (start) begin
-            info_cache <= info_bits;
+            data_cache <= check_bits;
         end
         else if (crc_en) begin
-            info_cache <= {1'd0, info_cache[20:1]};
+            data_cache <= {1'd0, data_cache[36:1]};
         end
     end
 end
 // crc_in
-assign crc_in = info_cache[0];
+assign crc_in = data_cache[0];
 // crc16 inst
 vdec_hs_crc16 ucrc16 (
     .crc_in     ( crc_in    ),
@@ -99,16 +97,16 @@ vdec_hs_crc16 ucrc16 (
     .crc_next   ( crc_next  )
 );
 // crc_match
-always @(posedge clk or posedge rst) begin
-    if (rst) begin
+always @(posedge clk or negedge rst_n) begin
+    if (~rst_n) begin
         crc_match <= 1'd0;
     end
     else begin
         if (start) begin
             crc_match <= 1'd0;
         end
-        else if (bit_cnt == 4'd1) begin
-            if (crc_bits == crc_next) begin
+        else if (bit_cnt == 5'd1) begin
+            if (crc_next == 16'd0) begin
                 crc_match <= 1'd1;
             end
             else begin
@@ -118,12 +116,12 @@ always @(posedge clk or posedge rst) begin
     end
 end
 // done
-always @(posedge clk or posedge rst) begin
-    if (rst) begin
+always @(posedge clk or negedge rst_n) begin
+    if (~rst_n) begin
         done <= 1'd0;
     end
     else begin
-        if (bit_cnt == 4'd1) begin
+        if (bit_cnt == 5'd1) begin
             done <= 1'd1;
         end
         else begin
@@ -132,8 +130,8 @@ always @(posedge clk or posedge rst) begin
     end
 end
 // busy
-always @(posedge clk or posedge rst) begin
-    if (rst) begin
+always @(posedge clk or negedge rst_n) begin
+    if (~rst_n) begin
         busy <= 1'd0;
     end
     else begin

@@ -13,7 +13,7 @@
 //////////////////////////////////////////////////////////////////////////////
 module vdec_hs (
     clk,
-    res,
+    rst_n,
     //
     busy,
     done,
@@ -26,13 +26,6 @@ module vdec_hs (
     //
     status,
     // mpif
-    mpreq,
-    mpa,
-    mpd,
-    mpq,
-    mpbusy,
-    u_mpw,
-    u_mpr,
     mp_vdec_sel_AB,
     mp_vdec_sel_CD,
     // HSDPA Interface
@@ -87,7 +80,7 @@ module vdec_hs (
 // port
 //---------------------------------------------------------------------------
 input                       clk;
-input                       res;
+input                       rst_n;
 output                      busy;
 output                      done;
 output                      done_hsscch_part1;
@@ -96,13 +89,6 @@ output                      done_agch;
 output                      done_ns_hsscch_part1;
 output                      done_ns_hsscch_part2;
 output  [31:0]              status;
-input                       mpreq;
-input   [11:0]              mpa;
-input   [31:0]              mpd;
-output  [31:0]              mpq;
-output                      mpbusy;
-input                       u_mpw;
-input                       u_mpr;
 input                       mp_vdec_sel_AB;
 input                       mp_vdec_sel_CD;
 input   [15:0]              hsscch_uemask;
@@ -146,12 +132,9 @@ output  [31:0]              pt_d_out;
 input   [31:0]              pt_q_in;
 reg                         agch_crc1;
 reg                         agch_crc2;
-reg     [31:0]              mpq;
 //---------------------------------------------------------------------------
 // internal wires
 //---------------------------------------------------------------------------
-wire                        rst;
-wire                        rst_n;
 wire                        vdec_hs_start;
 wire                        vdec_hs_busy;
 wire                        vdec_hs_done;
@@ -193,9 +176,8 @@ wire    [31:0]              bwd_pt_dout;
 wire                        bwd_busy;
 wire    [28:0]              bwd_dec_bits;
 wire                        crc_busy;
-reg     [20:0]              crc_info_bits;
-reg     [15:0]              crc_par_bits;
-reg     [ 4:0]              crc_info_len;
+reg     [36:0]              crc_check_bits;     // hsscch: 21+16    agch: 6+16
+reg     [ 5:0]              crc_check_len;
 wire                        ser_busy;
 wire    [28:0]              ser_dec_bits;
 wire    [ 6:0]              ser_acc;
@@ -209,6 +191,7 @@ wire    [ 9:0]              ser_diram_rd_addr;
 wire    [23:0]              ser_diram_dout;
 reg                         fwd_diram_rd_pend;
 reg                         ser_diram_rd_pend;
+reg     [ 7:0]              ns_part1_c0;
 reg     [ 7:0]              ca0_part1_c0;
 reg     [ 7:0]              ca0_part1_c1;
 reg     [ 7:0]              ca0_part1_c2;
@@ -218,57 +201,16 @@ reg     [ 7:0]              ca1_part1_c0;
 reg     [ 7:0]              ca1_part1_c1;
 reg     [ 7:0]              ca1_part1_c2;
 reg     [ 7:0]              ca1_part1_c3;
-wire                        sm0_mpasel;
-wire                        sm1_mpasel;
-wire                        pt_mpasel;
-wire                        sm0_mpr;
-wire                        sm1_mpr;
-wire                        pt_mpr;
-wire                        sm0_mpw;
-wire                        sm1_mpw;
-wire                        pt_mpw;
-wire                        sm0_mpbusy;
-wire                        sm1_mpbusy;
-wire                        pt_mpbusy;
-wire    [3:0]               sm0_rd_req;
-wire    [3:0]               sm0_wr_req;
-wire    [3:0]               sm0_rd_ack;
-wire    [3:0]               sm0_wr_ack;
-wire    [3:0]               sm0_rd_req_ack;
-wire    [3:0]               sm0_wr_req_ack;
-wire    [3:0]               sm0_rd_reqreg;
-wire    [3:0]               sm0_wr_reqreg;
-wire    [3:0]               sm0_ram_chan_sel;
-wire    [3:0]               sm1_rd_req;
-wire    [3:0]               sm1_wr_req;
-wire    [3:0]               sm1_rd_ack;
-wire    [3:0]               sm1_wr_ack;
-wire    [3:0]               sm1_rd_req_ack;
-wire    [3:0]               sm1_wr_req_ack;
-wire    [3:0]               sm1_rd_reqreg;
-wire    [3:0]               sm1_wr_reqreg;
-wire    [3:0]               sm1_ram_chan_sel;
-wire    [3:0]               pt_rd_req;
-wire    [3:0]               pt_wr_req;
-wire    [3:0]               pt_rd_ack;
-wire    [3:0]               pt_wr_ack;
-wire    [3:0]               pt_rd_req_ack;
-wire    [3:0]               pt_wr_req_ack;
-wire    [3:0]               pt_rd_reqreg;
-wire    [3:0]               pt_wr_reqreg;
-wire    [3:0]               pt_ram_chan_sel;
 //---------------------------------------------------------------------------
 // TOP LOGIC
 //---------------------------------------------------------------------------
-assign rst              = res;
-assign rst_n            = ~res;
 assign vdec_hs_start    = start_part1 | start_part2 | start_ns_part1 | start_ns_part2 | start_agch;
 assign hs_uemask        = ns_type ? ns_hsscch_uemask : hsscch_uemask;
 assign agch_uemask      = agch_crc_sel ? agch_uemask2 : agch_uemask1;
 assign hsscch_sel       = {hsscch_ca_sel, hsscch_pp_sel, hsscch_ch_sel};
 // hs_mode & ns_type
-always @(posedge clk or posedge rst) begin
-    if (rst) begin
+always @(posedge clk or negedge rst_n) begin
+    if (~rst_n) begin
         hs_mode <= 2'd0;
         ns_type <= 1'd0;
     end
@@ -298,8 +240,8 @@ always @(posedge clk or posedge rst) begin
     end
 end
 // base_sys
-always @(posedge clk or posedge rst) begin
-    if (rst) begin
+always @(posedge clk or negedge rst_n) begin
+    if (~rst_n) begin
         base_sys <= 10'd0;
     end
     else begin
@@ -379,19 +321,20 @@ always @(*) begin
         default : codeblk_size_p7 = 6'd29;      // agch     : 22 + 7 = 29
     endcase
 end
-// crc_info_len
+// crc_check_len
 always @(*) begin
     case (hs_mode)
-        2'd0    : crc_info_len = 5'd8;          // part1    : 8  + 7 = 15
-        2'd1    : crc_info_len = 5'd21;         // part2    : 29 + 7 = 36
-        default : crc_info_len = 5'd6;          // agch     : 22 + 7 = 29
+        2'd0    : crc_check_len = 6'd8;         // part1    :  8 +  0 = 8
+        2'd1    : crc_check_len = 6'd37;        // part2    : 21 + 16 = 37
+        default : crc_check_len = 6'd22;        // agch     :  6 + 16 = 22
     endcase
 end
 // ser_dec_bits
 assign ser_dec_bits = bwd_dec_bits;
 // part1 reg
-always @(posedge clk or posedge rst) begin
-    if (rst) begin
+always @(posedge clk or negedge rst_n) begin
+    if (~rst_n) begin
+        ns_part1_c0  <= 8'd0;
         ca0_part1_c0 <= 8'd0;
         ca0_part1_c1 <= 8'd0;
         ca0_part1_c2 <= 8'd0;
@@ -403,8 +346,11 @@ always @(posedge clk or posedge rst) begin
         ca1_part1_c3 <= 8'd0;
     end
     else begin
-        if (bwd_done) begin
-            if (hsscch_uemask2_sel) begin
+        if (hs_mode == 0 && bwd_done == 1) begin
+            if (ns_type) begin
+                ns_part1_c0  <= bwd_dec_bits[7:0];
+            end
+            else if (hsscch_uemask2_sel) begin
                 ca0_part1_c4 <= bwd_dec_bits[7:0];
             end
             else begin
@@ -422,72 +368,73 @@ always @(posedge clk or posedge rst) begin
         end
     end
 end
-// crc_info_bits
+// crc_check_bits
 always @(*) begin
     if (hs_mode == 3'd0) begin          // part1
-        crc_info_bits = 21'd0;
+        crc_check_bits = 37'd0;
     end
     else if (hs_mode == 3'd1) begin     // part2
-        if (hsscch_uemask2_sel) begin
-            crc_info_bits = {bwd_dec_bits[12:0], ca0_part1_c4[7:0]};
+        // parity
+        crc_check_bits[36] = bwd_dec_bits[13] ^ hs_uemask[15];
+        crc_check_bits[35] = bwd_dec_bits[14] ^ hs_uemask[14];
+        crc_check_bits[34] = bwd_dec_bits[15] ^ hs_uemask[13];
+        crc_check_bits[33] = bwd_dec_bits[16] ^ hs_uemask[12];
+        crc_check_bits[32] = bwd_dec_bits[17] ^ hs_uemask[11];
+        crc_check_bits[31] = bwd_dec_bits[18] ^ hs_uemask[10];
+        crc_check_bits[30] = bwd_dec_bits[19] ^ hs_uemask[ 9];
+        crc_check_bits[29] = bwd_dec_bits[20] ^ hs_uemask[ 8];
+        crc_check_bits[28] = bwd_dec_bits[21] ^ hs_uemask[ 7];
+        crc_check_bits[27] = bwd_dec_bits[22] ^ hs_uemask[ 6];
+        crc_check_bits[26] = bwd_dec_bits[23] ^ hs_uemask[ 5];
+        crc_check_bits[25] = bwd_dec_bits[24] ^ hs_uemask[ 4];
+        crc_check_bits[24] = bwd_dec_bits[25] ^ hs_uemask[ 3];
+        crc_check_bits[23] = bwd_dec_bits[26] ^ hs_uemask[ 2];
+        crc_check_bits[22] = bwd_dec_bits[27] ^ hs_uemask[ 1];
+        crc_check_bits[21] = bwd_dec_bits[28] ^ hs_uemask[ 0];
+        // info
+        if (ns_type) begin  // ns_hsscch decode
+            crc_check_bits[20:0] = {bwd_dec_bits[12:0], ns_part1_c0[7:0]};
+        end
+        else if (hsscch_uemask2_sel) begin
+            crc_check_bits[20:0] = {bwd_dec_bits[12:0], ca0_part1_c4[7:0]};
         end
         else begin
             case ({hsscch_ca_sel, hsscch_ch_sel})
-                3'd0    : crc_info_bits = {bwd_dec_bits[12:0], ca0_part1_c0[7:0]};
-                3'd1    : crc_info_bits = {bwd_dec_bits[12:0], ca0_part1_c1[7:0]};
-                3'd2    : crc_info_bits = {bwd_dec_bits[12:0], ca0_part1_c2[7:0]};
-                3'd3    : crc_info_bits = {bwd_dec_bits[12:0], ca0_part1_c3[7:0]};
-                3'd4    : crc_info_bits = {bwd_dec_bits[12:0], ca1_part1_c0[7:0]};
-                3'd5    : crc_info_bits = {bwd_dec_bits[12:0], ca1_part1_c1[7:0]};
-                3'd6    : crc_info_bits = {bwd_dec_bits[12:0], ca1_part1_c2[7:0]};
-                default : crc_info_bits = {bwd_dec_bits[12:0], ca1_part1_c3[7:0]};
+                3'd0    : crc_check_bits[20:0] = {bwd_dec_bits[12:0], ca0_part1_c0[7:0]};
+                3'd1    : crc_check_bits[20:0] = {bwd_dec_bits[12:0], ca0_part1_c1[7:0]};
+                3'd2    : crc_check_bits[20:0] = {bwd_dec_bits[12:0], ca0_part1_c2[7:0]};
+                3'd3    : crc_check_bits[20:0] = {bwd_dec_bits[12:0], ca0_part1_c3[7:0]};
+                3'd4    : crc_check_bits[20:0] = {bwd_dec_bits[12:0], ca1_part1_c0[7:0]};
+                3'd5    : crc_check_bits[20:0] = {bwd_dec_bits[12:0], ca1_part1_c1[7:0]};
+                3'd6    : crc_check_bits[20:0] = {bwd_dec_bits[12:0], ca1_part1_c2[7:0]};
+                default : crc_check_bits[20:0] = {bwd_dec_bits[12:0], ca1_part1_c3[7:0]};
             endcase
         end
     end
     else begin                          // agch
-        crc_info_bits = {15'd0, bwd_dec_bits[5:0]};
-    end
-end
-// crc_par_bits
-always @(*) begin
-    if (hs_mode == 3'd0) begin          // part1
-        crc_par_bits = 16'd0;
-    end
-    else if (hs_mode == 3'd1) begin     // part2
-        crc_par_bits[15] = bwd_dec_bits[13] ^ hs_uemask[15];
-        crc_par_bits[14] = bwd_dec_bits[14] ^ hs_uemask[14];
-        crc_par_bits[13] = bwd_dec_bits[15] ^ hs_uemask[13];
-        crc_par_bits[12] = bwd_dec_bits[16] ^ hs_uemask[12];
-        crc_par_bits[11] = bwd_dec_bits[17] ^ hs_uemask[11];
-        crc_par_bits[10] = bwd_dec_bits[18] ^ hs_uemask[10];
-        crc_par_bits[ 9] = bwd_dec_bits[19] ^ hs_uemask[ 9];
-        crc_par_bits[ 8] = bwd_dec_bits[20] ^ hs_uemask[ 8];
-        crc_par_bits[ 7] = bwd_dec_bits[21] ^ hs_uemask[ 7];
-        crc_par_bits[ 6] = bwd_dec_bits[22] ^ hs_uemask[ 6];
-        crc_par_bits[ 5] = bwd_dec_bits[23] ^ hs_uemask[ 5];
-        crc_par_bits[ 4] = bwd_dec_bits[24] ^ hs_uemask[ 4];
-        crc_par_bits[ 3] = bwd_dec_bits[25] ^ hs_uemask[ 3];
-        crc_par_bits[ 2] = bwd_dec_bits[26] ^ hs_uemask[ 2];
-        crc_par_bits[ 1] = bwd_dec_bits[27] ^ hs_uemask[ 1];
-        crc_par_bits[ 0] = bwd_dec_bits[28] ^ hs_uemask[ 0];
-    end
-    else begin                          // agch
-        crc_par_bits[15] = bwd_dec_bits[ 6] ^ agch_uemask[15];
-        crc_par_bits[14] = bwd_dec_bits[ 7] ^ agch_uemask[14];
-        crc_par_bits[13] = bwd_dec_bits[ 8] ^ agch_uemask[13];
-        crc_par_bits[12] = bwd_dec_bits[ 9] ^ agch_uemask[12];
-        crc_par_bits[11] = bwd_dec_bits[10] ^ agch_uemask[11];
-        crc_par_bits[10] = bwd_dec_bits[11] ^ agch_uemask[10];
-        crc_par_bits[ 9] = bwd_dec_bits[12] ^ agch_uemask[ 9];
-        crc_par_bits[ 8] = bwd_dec_bits[13] ^ agch_uemask[ 8];
-        crc_par_bits[ 7] = bwd_dec_bits[14] ^ agch_uemask[ 7];
-        crc_par_bits[ 6] = bwd_dec_bits[15] ^ agch_uemask[ 6];
-        crc_par_bits[ 5] = bwd_dec_bits[16] ^ agch_uemask[ 5];
-        crc_par_bits[ 4] = bwd_dec_bits[17] ^ agch_uemask[ 4];
-        crc_par_bits[ 3] = bwd_dec_bits[18] ^ agch_uemask[ 3];
-        crc_par_bits[ 2] = bwd_dec_bits[19] ^ agch_uemask[ 2];
-        crc_par_bits[ 1] = bwd_dec_bits[20] ^ agch_uemask[ 1];
-        crc_par_bits[ 0] = bwd_dec_bits[21] ^ agch_uemask[ 0];
+        crc_check_bits[36:22] = 15'd0;
+        crc_check_bits[21] = bwd_dec_bits[ 6] ^ agch_uemask[15];
+        crc_check_bits[20] = bwd_dec_bits[ 7] ^ agch_uemask[14];
+        crc_check_bits[19] = bwd_dec_bits[ 8] ^ agch_uemask[13];
+        crc_check_bits[18] = bwd_dec_bits[ 9] ^ agch_uemask[12];
+        crc_check_bits[17] = bwd_dec_bits[10] ^ agch_uemask[11];
+        crc_check_bits[16] = bwd_dec_bits[11] ^ agch_uemask[10];
+        crc_check_bits[15] = bwd_dec_bits[12] ^ agch_uemask[ 9];
+        crc_check_bits[14] = bwd_dec_bits[13] ^ agch_uemask[ 8];
+        crc_check_bits[13] = bwd_dec_bits[14] ^ agch_uemask[ 7];
+        crc_check_bits[12] = bwd_dec_bits[15] ^ agch_uemask[ 6];
+        crc_check_bits[11] = bwd_dec_bits[16] ^ agch_uemask[ 5];
+        crc_check_bits[10] = bwd_dec_bits[17] ^ agch_uemask[ 4];
+        crc_check_bits[ 9] = bwd_dec_bits[18] ^ agch_uemask[ 3];
+        crc_check_bits[ 8] = bwd_dec_bits[19] ^ agch_uemask[ 2];
+        crc_check_bits[ 7] = bwd_dec_bits[20] ^ agch_uemask[ 1];
+        crc_check_bits[ 6] = bwd_dec_bits[21] ^ agch_uemask[ 0];
+        crc_check_bits[ 5] = bwd_dec_bits[5];
+        crc_check_bits[ 4] = bwd_dec_bits[4];
+        crc_check_bits[ 3] = bwd_dec_bits[3];
+        crc_check_bits[ 2] = bwd_dec_bits[2];
+        crc_check_bits[ 1] = bwd_dec_bits[1];
+        crc_check_bits[ 0] = bwd_dec_bits[0];
     end
 end
 //---------------------------------------------------------------------------
@@ -495,7 +442,7 @@ end
 //---------------------------------------------------------------------------
 vdec_hs_ctrl u0_fsm (
     .clk                    ( clk                           ),
-    .rst                    ( rst                           ),
+    .rst_n                  ( rst_n                         ),
     .start                  ( vdec_hs_start                 ),
     .busy                   ( vdec_hs_busy                  ),
     .done                   ( vdec_hs_done                  ),
@@ -517,7 +464,7 @@ vdec_hs_ctrl u0_fsm (
 //---------------------------------------------------------------------------
 vdec_hs_fwd u1_fwd (
     .clk                    ( clk                           ),
-    .rst                    ( rst                           ),
+    .rst_n                  ( rst_n                         ),
     .start                  ( fwd_start                     ),
     .busy                   ( fwd_busy                      ),
     .done                   ( fwd_done                      ),
@@ -550,7 +497,7 @@ vdec_hs_fwd u1_fwd (
 //---------------------------------------------------------------------------
 vdec_hs_bwd u2_traceback (
     .clk                    ( clk                           ),
-    .rst                    ( rst                           ),
+    .rst_n                  ( rst_n                         ),
     .start                  ( bwd_start                     ),
     .busy                   ( bwd_busy                      ),
     .done                   ( bwd_done                      ),
@@ -565,21 +512,20 @@ vdec_hs_bwd u2_traceback (
 //---------------------------------------------------------------------------
 vdec_hs_crc_check u3_crc (
     .clk                    ( clk                           ),
-    .rst                    ( rst                           ),
+    .rst_n                  ( rst_n                         ),
     .start                  ( crc_start                     ),
     .busy                   ( crc_busy                      ),
     .done                   ( crc_done                      ),
     .crc_match              ( crc_match                     ),
-    .info_bits              ( crc_info_bits                 ),
-    .crc_bits               ( crc_par_bits                  ),
-    .info_len               ( crc_info_len                  )
+    .check_bits             ( crc_check_bits                ),
+    .check_len              ( crc_check_len                 )
 );
 //---------------------------------------------------------------------------
 // VDEC_HS SER CALC
 //---------------------------------------------------------------------------
 vdec_hs_ser u4_ser (
     .clk                    ( clk                           ),
-    .rst                    ( rst                           ),
+    .rst_n                  ( rst_n                         ),
     .start                  ( ser_start                     ),
     .busy                   ( ser_busy                      ),
     .done                   ( ser_done                      ),
@@ -598,8 +544,8 @@ vdec_hs_ser u4_ser (
 // DIRAM MUX
 //---------------------------------------------------------------------------
 // fwd_diram_rd_pend
-always @(posedge clk or posedge rst) begin
-    if (rst) begin
+always @(posedge clk or negedge rst_n) begin
+    if (~rst_n) begin
         fwd_diram_rd_pend <= 1'd0;
     end
     else begin
@@ -612,8 +558,8 @@ always @(posedge clk or posedge rst) begin
     end
 end
 // ser_diram_rd_pend
-always @(posedge clk or posedge rst) begin
-    if (rst) begin
+always @(posedge clk or negedge rst_n) begin
+    if (~rst_n) begin
         ser_diram_rd_pend <= 1'd0;
     end
     else begin
@@ -633,125 +579,26 @@ assign ser_diram_rd_ack = diram_rd_ack;
 assign fwd_diram_dout   = diram_dout;
 assign ser_diram_dout   = diram_dout;
 //---------------------------------------------------------------------------
-// MPU BUS
+// RAM
 //---------------------------------------------------------------------------
-// address allocation
-// RAM          BUS_VALUE                   START_ADDR
-// smram0       mpa[11:8] == 4'b0000        0x000
-// smram1       mpa[11:8] == 4'b0001        0x100
-// ptram        mpa[11:8] == 4'b1xxx        0x800
-assign sm0_mpasel = (mpa[11] == 1'b0 && mpa[10:8] == 3'b000) ? 1'b1 : 1'b0;
-assign sm1_mpasel = (mpa[11] == 1'b0 && mpa[10:8] == 3'b001) ? 1'b1 : 1'b0;
-assign pt_mpasel  = (mpa[11] == 1'b1                       ) ? 1'b1 : 1'b0;
-assign sm0_mpr    = u_mpr & sm0_mpasel;
-assign sm1_mpr    = u_mpr & sm1_mpasel;
-assign pt_mpr     = u_mpr & pt_mpasel;
-assign sm0_mpw    = u_mpw & sm0_mpasel;
-assign sm1_mpw    = u_mpw & sm1_mpasel;
-assign pt_mpw     = u_mpw & pt_mpasel;
-// smram0
-ram_multiport u_smram0 (
-    .clk                    ( clk                           ),
-    .rst_n                  ( rst_n                         ),
-    .rd_req                 ( sm0_rd_req                    ),
-    .wr_req                 ( sm0_wr_req                    ),
-    .rd_ack                 ( sm0_rd_ack                    ),
-    .wr_ack                 ( sm0_wr_ack                    ),
-    .rd_req_ack             ( sm0_rd_req_ack                ),
-    .wr_req_ack             ( sm0_wr_req_ack                ),
-    .rd_reqreg              ( sm0_rd_reqreg                 ),
-    .wr_reqreg              ( sm0_wr_reqreg                 ),
-    .ram_chan_sel           ( sm0_ram_chan_sel              ),
-    .ram_cen_out            ( sm0_cen_out                   ),
-    .ram_wen_out            ( sm0_wen_out                   )
-);
-assign sm0_rd_req[0]        = fwd_sm0_rd;
-assign sm0_rd_req[1]        = sm0_mpr;
-assign sm0_rd_req[2]        = 1'd0;
-assign sm0_rd_req[3]        = 1'd0;
-assign sm0_wr_req[0]        = fwd_sm0_wr;
-assign sm0_wr_req[1]        = sm0_mpw;
-assign sm0_wr_req[2]        = 1'd0;
-assign sm0_wr_req[3]        = 1'd0;
-assign sm0_a_out            = (sm0_rd_req[0] | sm0_wr_req[0]) ? fwd_sm0_addr : mpa[7:2];
-assign sm0_d_out            = (                sm0_wr_req[0]) ? fwd_sm0_din  : mpd[31:0];
+// sm0
+assign sm0_cen_out          = ~(fwd_sm0_rd | fwd_sm0_wr);
+assign sm0_wen_out          = ~(             fwd_sm0_wr);
+assign sm0_a_out            = fwd_sm0_addr;
+assign sm0_d_out            = fwd_sm0_din;
 assign fwd_sm0_dout         = sm0_q_in;
-assign sm0_mpbusy           = mpreq | sm0_rd_reqreg[1] | sm0_rd_ack[1] | sm0_wr_reqreg[1] | sm0_wr_ack[1];
-// smram1
-ram_multiport u_smram1 (
-    .clk                    ( clk                           ),
-    .rst_n                  ( rst_n                         ),
-    .rd_req                 ( sm1_rd_req                    ),
-    .wr_req                 ( sm1_wr_req                    ),
-    .rd_ack                 ( sm1_rd_ack                    ),
-    .wr_ack                 ( sm1_wr_ack                    ),
-    .rd_req_ack             ( sm1_rd_req_ack                ),
-    .wr_req_ack             ( sm1_wr_req_ack                ),
-    .rd_reqreg              ( sm1_rd_reqreg                 ),
-    .wr_reqreg              ( sm1_wr_reqreg                 ),
-    .ram_chan_sel           ( sm1_ram_chan_sel              ),
-    .ram_cen_out            ( sm1_cen_out                   ),
-    .ram_wen_out            ( sm1_wen_out                   )
-);
-assign sm1_rd_req[0]        = fwd_sm1_rd;
-assign sm1_rd_req[1]        = sm1_mpr;
-assign sm1_rd_req[2]        = 1'd0;
-assign sm1_rd_req[3]        = 1'd0;
-assign sm1_wr_req[0]        = fwd_sm1_wr;
-assign sm1_wr_req[1]        = sm1_mpw;
-assign sm1_wr_req[2]        = 1'd0;
-assign sm1_wr_req[3]        = 1'd0;
-assign sm1_a_out            = (sm1_rd_req[0] | sm1_wr_req[0]) ? fwd_sm1_addr : mpa[7:2];
-assign sm1_d_out            = (                sm1_wr_req[0]) ? fwd_sm1_din  : mpd[31:0];
+// sm1
+assign sm1_cen_out          = ~(fwd_sm1_rd | fwd_sm1_wr);
+assign sm1_wen_out          = ~(             fwd_sm1_wr);
+assign sm1_a_out            = fwd_sm1_addr;
+assign sm1_d_out            = fwd_sm1_din;
 assign fwd_sm1_dout         = sm1_q_in;
-assign sm1_mpbusy           = mpreq | sm1_rd_reqreg[1] | sm1_rd_ack[1] | sm1_wr_reqreg[1] | sm1_wr_ack[1];
-// ptram
-ram_multiport u_ptram (
-    .clk                    ( clk                           ),
-    .rst_n                  ( rst_n                         ),
-    .rd_req                 ( pt_rd_req                     ),
-    .wr_req                 ( pt_wr_req                     ),
-    .rd_ack                 ( pt_rd_ack                     ),
-    .wr_ack                 ( pt_wr_ack                     ),
-    .rd_req_ack             ( pt_rd_req_ack                 ),
-    .wr_req_ack             ( pt_wr_req_ack                 ),
-    .rd_reqreg              ( pt_rd_reqreg                  ),
-    .wr_reqreg              ( pt_wr_reqreg                  ),
-    .ram_chan_sel           ( pt_ram_chan_sel               ),
-    .ram_cen_out            ( pt_cen_out                    ),
-    .ram_wen_out            ( pt_wen_out                    )
-);
-assign pt_rd_req[0]         = bwd_pt_rd;
-assign pt_rd_req[1]         = pt_mpr;
-assign pt_rd_req[2]         = 1'd0;
-assign pt_rd_req[3]         = 1'd0;
-assign pt_wr_req[0]         = fwd_pt_wr;
-assign pt_wr_req[1]         = pt_mpw;
-assign pt_wr_req[2]         = 1'd0;
-assign pt_wr_req[3]         = 1'd0;
-assign pt_a_out             = pt_rd_req[0] ? bwd_pt_rd_addr : (pt_wr_req[0] ? fwd_pt_wr_addr : mpa[7:2]);
-assign pt_d_out             = pt_wr_req[0] ? fwd_pt_din : mpd[31:0];
+// pt
+assign pt_cen_out           = ~(bwd_pt_rd | fwd_pt_wr);
+assign pt_wen_out           = ~(            fwd_pt_wr);
+assign pt_a_out             = bwd_pt_rd ? bwd_pt_rd_addr : fwd_pt_wr_addr;
+assign pt_d_out             = fwd_pt_din;
 assign bwd_pt_dout          = pt_q_in;
-assign pt_mpbusy            = mpreq | pt_rd_reqreg[1] | pt_rd_ack[1] | pt_wr_reqreg[1] | pt_wr_ack[1];
-// mpbusy
-assign mpbusy               = sm0_mpbusy | sm1_mpbusy | pt_mpbusy;
-// mpq
-always @(posedge clk or posedge rst) begin
-    if (rst) begin
-        mpq <= 32'd0;
-    end
-    else begin
-        if (sm0_rd_ack[1]) begin
-            mpq <= sm0_q_in;
-        end
-        else if (sm1_rd_ack[1]) begin
-            mpq <= sm1_q_in;
-        end
-        else if (pt_rd_ack[1]) begin
-            mpq <= pt_q_in;
-        end
-    end
-end
 //---------------------------------------------------------------------------
 // OUTPUT
 //---------------------------------------------------------------------------
@@ -799,8 +646,8 @@ assign vdec_output[2]       = 1'd0;
 assign vdec_output[1]       = 1'd0;
 assign vdec_output[0]       = 1'd0;
 // agch crc1 & crc2
-always @(posedge clk or posedge rst) begin
-    if (rst) begin
+always @(posedge clk or negedge rst_n) begin
+    if (~rst_n) begin
         agch_crc1 <= 1'd0;
         agch_crc2 <= 1'd0;
     end

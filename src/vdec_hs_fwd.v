@@ -16,7 +16,7 @@
 //////////////////////////////////////////////////////////////////////////////
 module vdec_hs_fwd (
     clk,
-    rst,
+    rst_n,
     start,
     busy,
     done,
@@ -49,7 +49,7 @@ module vdec_hs_fwd (
 // port
 //---------------------------------------------------------------------------
 input                       clk;
-input                       rst;
+input                       rst_n;
 input                       start;
 output                      busy;
 output                      done;
@@ -201,8 +201,8 @@ wire                        punc;
 //---------------------------------------------------------------------------
 // initial c_next fill_up
 // After first c_next fill_up, forward process will be started actually!
-always @(posedge clk or posedge rst) begin
-    if (rst) begin
+always @(posedge clk or negedge rst_n) begin
+    if (~rst_n) begin
         c_ini <= 0;
     end
     else begin
@@ -215,8 +215,8 @@ always @(posedge clk or posedge rst) begin
     end
 end
 // fwd_start
-always @(posedge clk or posedge rst) begin
-    if (rst) begin
+always @(posedge clk or negedge rst_n) begin
+    if (~rst_n) begin
         fwd_start <= 0;
     end
     else begin
@@ -230,8 +230,8 @@ always @(posedge clk or posedge rst) begin
 end
 // pre_load
 // cyc==1 load new c_data, cyc==2 start load c_next
-always @(posedge clk or posedge rst) begin
-    if (rst) begin
+always @(posedge clk or negedge rst_n) begin
+    if (~rst_n) begin
         pre_load <= 0;
     end
     else begin
@@ -247,8 +247,8 @@ always @(posedge clk or posedge rst) begin
     end
 end
 // pre_load_cnt
-always @(posedge clk or posedge rst) begin
-    if (rst) begin
+always @(posedge clk or negedge rst_n) begin
+    if (~rst_n) begin
         pre_load_cnt <= 2'd0;
     end
     else begin
@@ -291,8 +291,8 @@ always @(*) begin
     end
 end
 // cc_reg
-always @(posedge clk or posedge rst) begin
-    if (rst) begin
+always @(posedge clk or negedge rst_n) begin
+    if (~rst_n) begin
         cc_reg <= 8'd0;
     end
     else begin
@@ -310,8 +310,8 @@ end
 assign cc_g0 = cc_reg[6] ^ cc_reg[5] ^ cc_reg[4] ^ cc_reg[0] ^ cc_in;   // modified 20171011, bit index of crc_reg reversed!!
 assign cc_g1 = cc_reg[7] ^ cc_reg[6] ^ cc_reg[5] ^ cc_reg[3] ^ cc_reg[1] ^ cc_reg[0] ^ cc_in;
 // pre_load c0/1/2 next
-always @(posedge clk or posedge rst) begin
-    if (rst) begin
+always @(posedge clk or negedge rst_n) begin
+    if (~rst_n) begin
         code_index <= 7'd0;
         c0_next <= 6'd0;
         c1_next <= 6'd0;
@@ -373,25 +373,9 @@ always @(posedge clk or posedge rst) begin
         end
     end
 end
-// pre_load_cnt
-always @(posedge clk or posedge rst) begin
-    if (rst) begin
-        pre_load_cnt <= 2'd0;
-    end
-    else begin
-        if (pre_load) begin
-            if (~diram_cache_low) begin
-                pre_load_cnt <= pre_load_cnt + 1;
-            end
-        end
-        else begin
-            pre_load_cnt <= 2'd0;
-        end
-    end
-end
 // diram_rd_req
-always @(posedge clk or posedge rst) begin
-    if (rst) begin
+always @(posedge clk or negedge rst_n) begin
+    if (~rst_n) begin
         diram_rd_req <= 0;
     end
     else begin
@@ -409,8 +393,8 @@ always @(posedge clk or posedge rst) begin
     end
 end
 // diram_rd_pend
-always @(posedge clk or posedge rst) begin
-    if (rst) begin
+always @(posedge clk or negedge rst_n) begin
+    if (~rst_n) begin
         diram_rd_pend <= 0;
     end
     else begin
@@ -428,8 +412,8 @@ always @(posedge clk or posedge rst) begin
     end
 end
 // diram_raddr
-always @(posedge clk or posedge rst) begin
-    if (rst) begin
+always @(posedge clk or negedge rst_n) begin
+    if (~rst_n) begin
         diram_raddr <= 0;
     end
     else begin
@@ -443,8 +427,8 @@ always @(posedge clk or posedge rst) begin
 end
 // diram_cache proc
 // TTRAM FORMAT: {D0, D1, D2, D3}, so diram_cache must left shift out
-always @(posedge clk or posedge rst) begin
-    if (rst) begin
+always @(posedge clk or negedge rst_n) begin
+    if (~rst_n) begin
         diram_cache <= 0;
         diram_cache_cnt <= 0;
     end
@@ -469,8 +453,8 @@ always @(posedge clk or posedge rst) begin
     end
 end
 // if diram access busy, when cyc==127, pre-load will not be complete, error occurs
-always @(posedge clk or posedge rst) begin
-    if (rst) begin
+always @(posedge clk or negedge rst_n) begin
+    if (~rst_n) begin
         c_stat <= 1'd0;
     end
     else begin
@@ -507,8 +491,8 @@ vdec_hs_derm uderm (
 //  ...
 //---------------------------------------------------------------------------
 // cyc_en
-always @(posedge clk or posedge rst) begin
-    if (rst) begin
+always @(posedge clk or negedge rst_n) begin
+    if (~rst_n) begin
         cyc_en <= 1'd0;
     end
     else begin
@@ -524,8 +508,8 @@ always @(posedge clk or posedge rst) begin
     end
 end
 // cyc
-always @(posedge clk or posedge rst) begin
-    if (rst) begin
+always @(posedge clk or negedge rst_n) begin
+    if (~rst_n) begin
         cyc <= 7'd0;
     end
     else begin
@@ -538,8 +522,8 @@ always @(posedge clk or posedge rst) begin
     end
 end
 // stage
-always @(posedge clk or posedge rst) begin
-    if (rst) begin
+always @(posedge clk or negedge rst_n) begin
+    if (~rst_n) begin
         stage <= 6'd0;
     end
     else begin
@@ -552,14 +536,14 @@ always @(posedge clk or posedge rst) begin
     end
 end
 // delay
-always @(posedge clk or posedge rst) begin
-    if (rst) begin
-        cyc_d1 <= 6'd0;
-        cyc_d2 <= 6'd0;
-        cyc_d3 <= 6'd0;
-        cyc_d4 <= 6'd0;
-        cyc_d5 <= 6'd0;
-        cyc_d6 <= 6'd0;
+always @(posedge clk or negedge rst_n) begin
+    if (~rst_n) begin
+        cyc_d1 <= 7'd0;
+        cyc_d2 <= 7'd0;
+        cyc_d3 <= 7'd0;
+        cyc_d4 <= 7'd0;
+        cyc_d5 <= 7'd0;
+        cyc_d6 <= 7'd0;
         smram_sel_d1 <= 1'd0;
         smram_sel_d2 <= 1'd0;
         smram_sel_d3 <= 1'd0;
@@ -610,27 +594,27 @@ assign sm1_addr     = sm1_rd ? sm_rd_addr : sm_wr_addr;
 always @(*) begin
     if (smram_sel_d6) begin
         if (cyc_d6[1:0] == 2'b00) begin
-            sm0_din <= next_a_states;
+            sm0_din = next_a_states;
         end
         else begin
-            sm0_din <= next_b_states;
+            sm0_din = next_b_states;
         end
     end
     else begin
-        sm0_din <= 32'd0;
+        sm0_din = 32'd0;
     end
 end
 // sm1_din
 always @(*) begin
     if (smram_sel_d6) begin
-        sm1_din <= 32'd0;
+        sm1_din = 32'd0;
     end
     else begin
         if (cyc_d6[1:0] == 2'b00) begin
-            sm1_din <= next_a_states;
+            sm1_din = next_a_states;
         end
         else begin
-            sm1_din <= next_b_states;
+            sm1_din = next_b_states;
         end
     end
 end
@@ -638,8 +622,8 @@ end
 // state0 = 0, other_state = 8'd255
 assign smram_dout = smram_sel_d1 ? sm1_dout : sm0_dout;
 // update A&B reg
-always @(posedge clk or posedge rst) begin
-    if (rst) begin
+always @(posedge clk or negedge rst_n) begin
+    if (~rst_n) begin
         a_states_reg <= 32'd0;
         a_states_reg_d1 <= 32'd0;
         b_states_reg <= 32'd0;
@@ -668,8 +652,8 @@ always @(posedge clk or posedge rst) begin
     end
 end
 // load c0/1/2
-always @(posedge clk or posedge rst) begin
-    if (rst) begin
+always @(posedge clk or negedge rst_n) begin
+    if (~rst_n) begin
         c0 <= 6'd0;
         c1 <= 6'd0;
         c2 <= 6'd0;
@@ -769,8 +753,8 @@ always @(*) begin
     endcase
 end
 // branch_ac/bc reg
-always @(posedge clk or posedge rst) begin
-    if (rst) begin
+always @(posedge clk or negedge rst_n) begin
+    if (~rst_n) begin
         branch_ac_d1 <= 7'd0;
         branch_bc_d1 <= 7'd0;
     end
@@ -821,8 +805,8 @@ assign sel_cd       = (diff_cd == 10'd0) ? mp_sel_CD : diff_cd[9];
 assign state_min_cd = sel_cd ? state_d : state_c;
 assign diff_min_sofar = {1'b0, state_min_cd} - {1'b0, min_sofar};
 // state_cd reg
-always @(posedge clk or posedge rst) begin
-    if (rst) begin
+always @(posedge clk or negedge rst_n) begin
+    if (~rst_n) begin
         next_a_states <= 32'd0;
         next_b_states <= 32'd0;
     end
@@ -838,8 +822,8 @@ always @(posedge clk or posedge rst) begin
     end
 end
 // min_sofar
-always @(posedge clk or posedge rst) begin
-    if (rst) begin
+always @(posedge clk or negedge rst_n) begin
+    if (~rst_n) begin
         min_sofar <= 8'd0;
     end
     else begin
@@ -854,8 +838,8 @@ always @(posedge clk or posedge rst) begin
     end
 end
 // min_state
-always @(posedge clk or posedge rst) begin
-    if (rst) begin
+always @(posedge clk or negedge rst_n) begin
+    if (~rst_n) begin
         min_state <= 8'd0;
     end
     else begin
@@ -877,8 +861,8 @@ end
 // ptram write
 // Each 16 cyc generate 32 path info, a write to ptram should be performed
 // pt_wr
-always @(posedge clk or posedge rst) begin
-    if (rst) begin
+always @(posedge clk or negedge rst_n) begin
+    if (~rst_n) begin
         pt_wr <= 1'd0;
     end
     else begin
@@ -891,8 +875,8 @@ always @(posedge clk or posedge rst) begin
     end
 end
 // pt_addr
-always @(posedge clk or posedge rst) begin
-    if (rst) begin
+always @(posedge clk or negedge rst_n) begin
+    if (~rst_n) begin
         pt_addr <= 9'd511;
     end
     else begin
@@ -905,8 +889,8 @@ always @(posedge clk or posedge rst) begin
     end
 end
 // pt_cache
-always @(posedge clk or posedge rst) begin
-    if (rst) begin
+always @(posedge clk or negedge rst_n) begin
+    if (~rst_n) begin
         pt_cache <= 30'd0;
     end
     else begin
@@ -930,8 +914,8 @@ always @(posedge clk or posedge rst) begin
     end
 end
 // pt_din
-always @(posedge clk or posedge rst) begin
-    if (rst) begin
+always @(posedge clk or negedge rst_n) begin
+    if (~rst_n) begin
         pt_din <= 32'd0;
     end
     else begin
@@ -942,8 +926,8 @@ always @(posedge clk or posedge rst) begin
 end
 
 // done
-always @(posedge clk or posedge rst) begin
-    if (rst) begin
+always @(posedge clk or negedge rst_n) begin
+    if (~rst_n) begin
         done_tmp1 <= 1'd0;
         done_tmp2 <= 1'd0;
         done_tmp3 <= 1'd0;
@@ -963,8 +947,8 @@ always @(posedge clk or posedge rst) begin
 end
 assign done = done_tmp4;
 // busy
-always @(posedge clk or posedge rst) begin
-    if (rst) begin
+always @(posedge clk or negedge rst_n) begin
+    if (~rst_n) begin
         busy <= 1'd0;
     end
     else begin

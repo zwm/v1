@@ -13,7 +13,7 @@
 //////////////////////////////////////////////////////////////////////////////
 module vdec_hs_ctrl (
     clk,
-    rst,
+    rst_n,
     start,
     busy,
     done,
@@ -35,7 +35,7 @@ module vdec_hs_ctrl (
 // port
 //---------------------------------------------------------------------------
 input                       clk;
-input                       rst;
+input                       rst_n;
 input                       start;
 output                      busy;
 output                      done;
@@ -67,8 +67,8 @@ parameter   CRC2            = 3'b100;
 parameter   SER             = 3'b101;
 parameter   FINISH          = 3'b110;
 // fsm
-always @(posedge clk or posedge rst) begin
-    if (rst) begin
+always @(posedge clk or negedge rst_n) begin
+    if (~rst_n) begin
         fsm <= IDLE;
     end
     else begin
@@ -147,12 +147,14 @@ always @(*) begin
             end
         FINISH :    // Finish!!
             fsm_next = IDLE;
+        default :
+            fsm_next = IDLE;
     endcase
 end
 // drive output
 // fwd_start
-always @(posedge clk or posedge rst) begin
-    if (rst) begin
+always @(posedge clk or negedge rst_n) begin
+    if (~rst_n) begin
         fwd_start <= 1'd0;
     end
     else begin
@@ -165,8 +167,8 @@ always @(posedge clk or posedge rst) begin
     end
 end
 // bwd_start
-always @(posedge clk or posedge rst) begin
-    if (rst) begin
+always @(posedge clk or negedge rst_n) begin
+    if (~rst_n) begin
         bwd_start <= 1'd0;
     end
     else begin
@@ -179,8 +181,8 @@ always @(posedge clk or posedge rst) begin
     end
 end
 // crc_start
-always @(posedge clk or posedge rst) begin
-    if (rst) begin
+always @(posedge clk or negedge rst_n) begin
+    if (~rst_n) begin
         crc_start <= 1'd0;
     end
     else begin
@@ -193,8 +195,8 @@ always @(posedge clk or posedge rst) begin
     end
 end
 // ser_start
-always @(posedge clk or posedge rst) begin
-    if (rst) begin
+always @(posedge clk or negedge rst_n) begin
+    if (~rst_n) begin
         ser_start <= 1'd0;
     end
     else begin
